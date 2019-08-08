@@ -30,8 +30,8 @@ cmap_bold = [[0, '#FF0000'], [0.5, '#00FF00'], [1, '#0000FF']]
 
 
 def register_callbacks(app):
-    @app.callback(Output('scatter', 'figure'),
-
+    @app.callback([Output('scatter', 'figure'),
+                   Output('label','children')],
                   [Input('select-dataset', 'value'),
                   Input('query-batch-size', 'value'),
                   Input('button', 'n_clicks'),
@@ -54,8 +54,12 @@ def register_callbacks(app):
         y = df.drop(raw_data.feature_names, axis=1).values
         np.save('x.npy', x)
         np.save('y.npy', y)
-        print(np.unique(y))
-        print(raw_data.target_names)
+        values = (np.unique(y))
+        names = (raw_data.target_names)
+        label = ' '
+        for value in values:
+                label = label + str(str(value)+ ' : ' + names[int(value)])+"\n"
+
 
         # Define our PCA transformer and fit it onto our raw dataset.
         pca = PCA(n_components=2, random_state=100)
@@ -64,7 +68,7 @@ def register_callbacks(app):
         df_pca.to_pickle('df_pca.pkl')
 
         # Randomly choose training examples
-        df_train = df.sample(n=3)
+        df_train = df.sample(n=batch_size)
         x_train = df_train[raw_data.feature_names].values
         y_train = df_train.drop(raw_data.feature_names, axis=1).values
         pca_mat = pca.fit_transform(df_train)
@@ -78,7 +82,7 @@ def register_callbacks(app):
                     go.Scatter(x=df_train_pca['1'],
                                y=df_train_pca['2'],
                                mode='markers',
-                               name='labeled data')
+                               name='initial training data')
                     ]
 
             df_pool = df[~df.index.isin(df_train.index)]
@@ -89,7 +93,7 @@ def register_callbacks(app):
             # ML model
             rf = RandomForestClassifier(n_jobs=-1, n_estimators=20, max_features=0.8)
             # batch sampling
-            preset_batch = partial(uncertainty_batch_sampling, n_instances=3)
+            preset_batch = partial(uncertainty_batch_sampling, n_instances=batch_size)
             # AL model
             learner = ActiveLearner(estimator=rf,
                                     X_training=x_train,
@@ -139,12 +143,13 @@ def register_callbacks(app):
             layout = go.Layout(
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
-                clickmode='event+select'
+                clickmode='event+select',
+                title='Unlabelled pool'
             )
 
         pickle.dump(learner, open(filename, 'wb'))
         fig = go.Figure(data, layout)
-        return fig
+        return fig, label
 
     @app.callback(
         [Output('query', 'disabled'),
@@ -192,9 +197,10 @@ def register_callbacks(app):
         [Output('decision', 'figure'),
          Output('score', 'children')],
         [Input('hidden-div', 'children'),
+         Input('button', 'n_clicks'),
          Input('query-batch-size', 'value'),
          ])
-    def perform_active_learning(previous, batch_size):
+    def perform_active_learning(previous, n_clicks, batch_size):
         decision = go.Figure()
         score = ''
         if previous:
@@ -224,11 +230,12 @@ def register_callbacks(app):
                                        marker=dict(color=predictions,
                                                    colorscale=cmap_bold,
                                                    showscale=True))]
+                layout = go.Layout(title='Output of classifier')
                 np.save('x_pool.npy', x_pool)
                 np.save('y_pool.npy', y_pool)
                 score = learner.score(x, y)
-                print('score after query ' + str(score))
-                decision = go.Figure(data_dec)
+                score = ('Query '+ str(n_clicks)+' ' + str(score))
+                decision = go.Figure(data_dec, layout=layout)
             return decision, score
 
 

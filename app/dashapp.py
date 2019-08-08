@@ -13,20 +13,11 @@ app.layout = html.Div(
             html.H2(html.A('Active Learning Explorer',
                            style={'text-decoration': 'none', 'color': 'inherit'},
                            href='https://github.com/plotly/dash-svm')), className="banner",),
-        html.Div(children=[
-            html.Div(
-
-                children=dcc.Loading(dcc.Graph(id='scatter'), fullscreen=True),
-
-                style={'width': '60%', 'height': '100%', 'display': 'inline-block', 'position': 'relative'}
-            ),
-
-
 
             html.Div(
 
-                style={'width': '20%', 'display': 'inline-block',
-                       'position': 'absolute'},
+                style={'width': '40%', 'display': 'inline-block',
+                       'position': 'absolute', 'height':'100%'},
                 children=[
                     html.P('Select a dataset', style={'text-align': 'left', 'color': 'light-grey'}),
                     dcc.Dropdown(id='select-dataset',
@@ -58,22 +49,35 @@ app.layout = html.Div(
 
 
                 ]),
-            html.Div([dcc.Input(id='query',
-                                placeholder='enter the label',
-                                type='text',
-                                debounce=True,
-                                disabled=True,
-                                value=''),
-                      html.Button('Submit', id='submit'),
-                      ],
-                     style={'width': '60%', 'height': '100%', 'display': 'inline-block', 'position': 'relative'}),
+            html.Div(
+
+                children=dcc.Loading(dcc.Graph(id='scatter'), fullscreen=True),
+
+                style={'width': '50%', 'height': '100%', 'display': 'inline-block', 'position': 'relative'}
+            ),
+        html.Div(children=[
+            html.Button('Next round', id='button', autoFocus=True,
+                        style={'display': 'inline-block', 'position': 'relative'}),
+
+            html.Div([
+                html.H4('Labels'),
+                html.Div(id='label'),
+                dcc.Input(id='query',
+                          placeholder='enter the label',
+                          type='text',
+                          debounce=True,
+                          disabled=True,
+                          value=''),
+                html.Button('Submit', id='submit'),
+            ],
+                style={'width': '60%', 'height': '100%', 'display': 'inline-block', 'position': 'relative'}),
 
             html.Div(
                 id='decision-graph',
                 children=dcc.Loading(dcc.Graph(id='decision'), fullscreen=True),
-                style={'width': '60%', 'height': '100%', 'display': 'inline-block', 'position': 'relative'}
+                style={'width': '100%', 'height': '100%'}
             ),
-            html.Button('Next round', id='button'),
+
             html.H4('Score'),
             html.Div(id='score'),
             html.Div(id='selected-data'),
