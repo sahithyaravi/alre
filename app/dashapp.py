@@ -16,12 +16,12 @@ app.layout = html.Div(
 
             html.Div(
 
-                style={'width': '40%', 'display': 'inline-block',
-                       'position': 'absolute', 'height':'100%'},
+                style={'width': '30%', 'display': 'inline-block',
+                       'position': 'relative', 'height':'100%'},
                 children=[
                     html.P('Select a dataset', style={'text-align': 'left', 'color': 'light-grey'}),
                     dcc.Dropdown(id='select-dataset',
-                                 options=[
+                                 options=[{'label': 'mnist', 'value': 'mnist'},
                                      {'label': 'iris', 'value': 'iris'},
                                      {'label': 'breast-cancer', 'value': 'bc'},
                                       {'label': 'wine', 'value': 'wine'}],
@@ -35,16 +35,15 @@ app.layout = html.Div(
                     html.Div(dcc.Slider(
 
                         id='query-batch-size',
-                        min=1,
-                        max=5,
-                        step=1,
+                        min=5,
+                        max=100,
+                        step=5,
                         marks={
-                            1: '1',
-                            2: '2',
-                            3: '3',
-                            4: '4',
-                            5: '5'},
-                        value=3
+                            5: '5',
+                            10: '10',
+                            50: '50',
+                            100: '100'},
+                        value=5
                     )),
 
 

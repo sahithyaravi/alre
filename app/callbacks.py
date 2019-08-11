@@ -1,5 +1,5 @@
 from dash.dependencies import Input, Output, State
-from sklearn.datasets import load_breast_cancer, load_iris, load_wine
+from sklearn.datasets import load_breast_cancer, load_iris, load_wine, load_digits
 from sklearn.decomposition import PCA
 import numpy as np
 import plotly.graph_objs as go
@@ -14,6 +14,8 @@ import pickle
 import json
 from ast import literal_eval
 import dash_html_components as html
+from sklearn.datasets import fetch_openml
+
 filename = 'finalized_model.sav'
 cmap_light = [[1, "rgb(165,0,38)"],
               [0.5, "rgb(165,0,38)"],
@@ -38,28 +40,34 @@ def register_callbacks(app):
 
                  ])
     def update_scatter_plot(dataset, batch_size, n_clicks):
-
-        if dataset == 'bc':
-            raw_data = load_breast_cancer()
-        elif dataset == 'iris':
-            raw_data = load_iris()
+        if dataset == "mnist":
+            raw_data = load_digits() #fetch_openml('mnist_784', version=1)
+            df = pd.DataFrame(data=np.c_[raw_data['data'], raw_data['target']])
         else:
-            raw_data = load_wine()
-        df = pd.DataFrame(data=np.c_[raw_data['data'], raw_data['target']],
-                          columns=list(raw_data['feature_names']) + ['target'])
-        df.to_pickle('df.pkl')
+            if dataset == 'bc':
+                raw_data = load_breast_cancer()
+            elif dataset == 'iris':
+                raw_data = load_iris()
+            elif dataset == "wine":
+                raw_data = load_wine()
+
+            df = pd.DataFrame(data=np.c_[raw_data['data'], raw_data['target']],
+                                  columns=list(raw_data['feature_names']) + ['target'])
+
 
         # Active learner supports numpy matrices, hence use .values
-        x = df[raw_data.feature_names].values
-        y = df.drop(raw_data.feature_names, axis=1).values
+        x = raw_data['data']
+        y = raw_data['target'].astype(np.uint8)
         np.save('x.npy', x)
         np.save('y.npy', y)
         values = (np.unique(y))
-        names = (raw_data.target_names)
+        try:
+            names = (raw_data.target_names)
+        except AttributeError:
+            names = values
         label = ' '
         for value in values:
-                label = label + str(str(value)+ ' : ' + names[int(value)])+"\n"
-
+                label = label + str(str(value)+ ' : ' + str(names[int(value)]))+"\n"
 
         # Define our PCA transformer and fit it onto our raw dataset.
         pca = PCA(n_components=2, random_state=100)
@@ -68,26 +76,26 @@ def register_callbacks(app):
         df_pca.to_pickle('df_pca.pkl')
 
         # Randomly choose training examples
-        df_train = df.sample(n=batch_size)
-        x_train = df_train[raw_data.feature_names].values
-        y_train = df_train.drop(raw_data.feature_names, axis=1).values
-        pca_mat = pca.fit_transform(df_train)
-        df_train_pca = pd.DataFrame(pca_mat, columns=['1','2'])
+        training_indices = np.random.randint(low=0, high=x.shape[0] + 1, size=batch_size)
+        x_train = x[training_indices]
+        y_train = y[training_indices]
+
+
         if n_clicks is None or n_clicks == 0:
             # Unlabeled pool
             data = [go.Scatter(x=df_pca['1'],
                                y=df_pca['2'],
                                mode='markers',
                                name='unlabeled data'),
-                    go.Scatter(x=df_train_pca['1'],
-                               y=df_train_pca['2'],
+                    go.Scatter(x=x_train[:,0],
+                               y= x_train[:,1],
                                mode='markers',
                                name='initial training data')
                     ]
 
-            df_pool = df[~df.index.isin(df_train.index)]
-            x_pool = df_pool[raw_data['feature_names']].values
-            y_pool = df_pool.drop(raw_data['feature_names'], axis=1).values.ravel()
+
+            x_pool = np.delete(x, training_indices, axis=0)
+            y_pool = np.delete(y, training_indices, axis=0)
             np.save('x_pool.npy', x_pool)
             np.save('y_pool.npy', y_pool)
             # ML model
@@ -112,7 +120,8 @@ def register_callbacks(app):
             query_indices, query_instance, uncertainity = learner.query(x_pool)
             uncertainity = [1 if value > 0.2 else 0 for value in uncertainity]
             # Plot the query instances
-            selected = pca.fit_transform(query_instance)
+            print(query_indices, x_pool.shape)
+            selected = pca.fit_transform(x_pool[query_indices])
             data = [
                 go.Scatter(x=df_pca['1'],
                            y=df_pca['2'],
