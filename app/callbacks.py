@@ -15,6 +15,7 @@ import json
 from ast import literal_eval
 import dash_html_components as html
 from sklearn.datasets import fetch_openml
+import umap
 
 filename = 'finalized_model.sav'
 cmap_light = [[1, "rgb(165,0,38)"],
@@ -40,64 +41,27 @@ def register_callbacks(app):
 
                  ])
     def update_scatter_plot(dataset, batch_size, n_clicks):
-        if dataset == "mnist":
-            raw_data = load_digits() #fetch_openml('mnist_784', version=1)
-            df = pd.DataFrame(data=np.c_[raw_data['data'], raw_data['target']])
-        else:
-            if dataset == 'bc':
-                raw_data = load_breast_cancer()
-            elif dataset == 'iris':
-                raw_data = load_iris()
-            elif dataset == "wine":
-                raw_data = load_wine()
-
-            df = pd.DataFrame(data=np.c_[raw_data['data'], raw_data['target']],
-                                  columns=list(raw_data['feature_names']) + ['target'])
-
-
+        df, raw_data = get_dataset(dataset)
         # Active learner supports numpy matrices, hence use .values
         x = raw_data['data']
         y = raw_data['target'].astype(np.uint8)
-        np.save('x.npy', x)
-        np.save('y.npy', y)
-        values = (np.unique(y))
-        try:
-            names = (raw_data.target_names)
-        except AttributeError:
-            names = values
-        label = ' '
-        for value in values:
-                label = label + str(str(value)+ ' : ' + str(names[int(value)]))+"\n"
 
         # Define our PCA transformer and fit it onto our raw dataset.
-        pca = PCA(n_components=2, random_state=100)
-        principals = pca.fit_transform(x)
-        df_pca = pd.DataFrame(data=principals, columns=['1', '2'])
-        df_pca.to_pickle('df_pca.pkl')
+        # Randomly choose initial training examples
+        query_indices = np.random.randint(low=0, high=x.shape[0] + 1, size=batch_size)
+        x_pool = np.delete(x, query_indices, axis=0)
+        y_pool = np.delete(y, query_indices, axis=0)
 
-        # Randomly choose training examples
-        training_indices = np.random.randint(low=0, high=x.shape[0] + 1, size=batch_size)
-        x_train = x[training_indices]
-        y_train = y[training_indices]
-
+        np.save('x.npy', x)
+        np.save('y.npy', y)
+        x_train = x[query_indices]
+        y_train = y[query_indices]
 
         if n_clicks is None or n_clicks == 0:
-            # Unlabeled pool
-            data = [go.Scatter(x=df_pca['1'],
-                               y=df_pca['2'],
-                               mode='markers',
-                               name='unlabeled data'),
-                    go.Scatter(x=x_train[:,0],
-                               y= x_train[:,1],
-                               mode='markers',
-                               name='initial training data')
-                    ]
-
-
-            x_pool = np.delete(x, training_indices, axis=0)
-            y_pool = np.delete(y, training_indices, axis=0)
+            n_clicks = " initial random"
             np.save('x_pool.npy', x_pool)
             np.save('y_pool.npy', y_pool)
+            x_pool = x
             # ML model
             rf = RandomForestClassifier(n_jobs=-1, n_estimators=20, max_features=0.8)
             # batch sampling
@@ -109,11 +73,7 @@ def register_callbacks(app):
                                     query_strategy=preset_batch)
             predictions = learner.predict(x)
             print(" unqueried score", learner.score(x, y.ravel()))
-            data_dec = []
-            layout = go.Layout(
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-            )
+
         else:
             x_pool = np.load('x_pool.npy')
             learner = pickle.load(open(filename, 'rb'))
@@ -121,20 +81,23 @@ def register_callbacks(app):
             uncertainity = [1 if value > 0.2 else 0 for value in uncertainity]
             # Plot the query instances
             print(query_indices, x_pool.shape)
-            selected = pca.fit_transform(x_pool[query_indices])
-            data = [
+        pca = PCA(n_components=2, random_state=100)
+        principals = pca.fit_transform(x_pool)
+        df_pca = pd.DataFrame(principals, columns =['1','2'])
+        selected = principals[query_indices]
+        data = [
                 go.Scatter(x=df_pca['1'],
                            y=df_pca['2'],
                                mode='markers',
-                               marker=dict(color='grey',
+                               marker=dict(color='blue',
                                            #line=dict(color='grey', width=12)
                                            ),
                                name='unlabeled data'),
                 go.Scatter(x=selected[:, 0],
                                y=selected[:, 1],
                                mode='markers',
-                               marker=dict(color='black', size=10,
-                                           line=dict(color='black', width=12)),
+                               marker=dict(color='red', size=10,
+                                           line=dict(color='red', width=12)),
                                name='query'+str(n_clicks)),
 
                 # go.Contour(x=df_pca['1'], y=df_pca['2'],
@@ -149,15 +112,22 @@ def register_callbacks(app):
                 #            showscale=False
                 #            )
             ]
-            layout = go.Layout(
+        layout = go.Layout(
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
-                clickmode='event+select',
-                #title='Unlabelled pool'
-            )
+                clickmode='event+select')
 
         pickle.dump(learner, open(filename, 'wb'))
         fig = go.Figure(data, layout)
+        # Labels
+        values = (np.unique(y))
+        try:
+            names = raw_data.target_names
+        except AttributeError:
+            names = values
+        label = ' '
+        for value in values:
+            label = label + str(str(value)+ ' : ' + str(names[int(value)]))+"\n"
         return fig, label
 
     @app.callback(
@@ -248,3 +218,17 @@ def register_callbacks(app):
             return decision, score
 
 
+def get_dataset(dataset):
+    if dataset == "mnist":
+        raw_data = load_digits()  # fetch_openml('mnist_784', version=1)
+        df = pd.DataFrame(data=np.c_[raw_data['data'], raw_data['target']])
+    else:
+        if dataset == 'bc':
+            raw_data = load_breast_cancer()
+        elif dataset == 'iris':
+            raw_data = load_iris()
+        elif dataset == "wine":
+            raw_data = load_wine()
+        df = pd.DataFrame(data=np.c_[raw_data['data'], raw_data['target']],
+                          columns=list(raw_data['feature_names']) + ['target'])
+    return df, raw_data

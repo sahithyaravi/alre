@@ -53,9 +53,13 @@ app.layout = html.Div(
                         html.P(' '),
                         html.P('Choose batch size',
                                style={'text-align': 'left', 'color': 'light-grey'}),
-                        html.Div(dcc.Slider(id='query-batch-size', min=5, max=100, step=5,
-                                            marks={5: '5', 10: '10', 50: '50', 100: '100'},
-                                            value=5))
+                        html.Div(dcc.Slider(id='query-batch-size', min=5, max=100, step=None,
+                                   marks={
+                                            i: str(i) for i in [5, 10, 50, 100]
+                                        }, value=5 ), style={"margin-bottom": "20px"}),
+
+
+
                     ]),
                 html.Div(className="six columns", children=[
                     dcc.Loading(dcc.Graph(id='scatter'), fullscreen=True),
