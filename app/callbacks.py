@@ -153,7 +153,7 @@ def register_callbacks(app):
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
                 clickmode='event+select',
-                title='Unlabelled pool'
+                #title='Unlabelled pool'
             )
 
         pickle.dump(learner, open(filename, 'wb'))
