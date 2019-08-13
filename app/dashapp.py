@@ -42,7 +42,7 @@ app.layout = html.Div(
                     children=[
                         html.P('Select a dataset', style={'text-align': 'left', 'color': 'light-grey'}),
                         dcc.Dropdown(id='select-dataset',
-                                     options=[{'label': 'mnist', 'value': 'mnist'},
+                                     options=[{'label': 'mnist-mini', 'value': 'mnist'},
                                               {'label': 'iris', 'value': 'iris'},
                                               {'label': 'breast-cancer', 'value': 'bc'},
                                               {'label': 'wine', 'value': 'wine'}],
@@ -78,10 +78,13 @@ app.layout = html.Div(
                                   value=''),
                         html.Button('Submit', id='submit'),
                     ], ),
-                    html.H4('Score'),
-                    html.Div(id='score')]),
+                    html.Div(id="dummy"),
+                    html.H4('Score after model fitting:'),
+                    html.Div(id='score'),
+                ]),
         ]),
         html.Div(id='selected-data'),
+
         dcc.Loading(html.Div(id='hidden-div', style={'display': 'none'}), fullscreen=True),
 
     ])
