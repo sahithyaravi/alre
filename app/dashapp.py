@@ -23,10 +23,9 @@ app.layout = html.Div(
                 html.Div(
                     id="description-text", children=html.H5("This is an active learning tool"
                                                             " which can be used for labelling training "
-                                                            "examples, visualizing datasets"
+                                                            "examples, visualizing"
                                                             " and experimenting with Active learning"""
-                                                            " and experimenting with Active learning"""
-                                                            " visualizing AL algorithms")
+                                                            )
                 ),
             ]),
         # Body
@@ -37,7 +36,7 @@ app.layout = html.Div(
                         'display': 'inline-block',
                         'width': '25%',
                         'overflow-y': 'hidden',
-                        'overflow-x': 'hidden',
+                        'overflow-x': 'auto',
                     },
                     children=[
                         html.P('Select a dataset', style={'text-align': 'left', 'color': 'light-grey'}),
@@ -56,7 +55,15 @@ app.layout = html.Div(
                         html.Div(dcc.Slider(id='query-batch-size', min=5, max=100, step=None,
                                    marks={
                                             i: str(i) for i in [5, 10, 50, 100]
-                                        }, value=5 ), style={"margin-bottom": "20px"}),
+                                        }, value=5 ), style={"margin-bottom": "30px"}),
+                        html.P('Choose visualization technique',
+                               style={'text-align': 'left', 'color': 'light-grey'}),
+                        dcc.RadioItems(id='dim',
+                                          options=[{'label': 'PCA', 'value': 'pca'},
+                                                   {'label': 'T-SNE', 'value': 'tsne'},
+                                                   {'label': 'UMAP', 'value': 'umap'}],
+                                          value='tsne'
+                                     ),
 
 
 

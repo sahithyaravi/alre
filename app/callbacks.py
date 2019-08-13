@@ -1,6 +1,9 @@
 from dash.dependencies import Input, Output, State
 from sklearn.datasets import load_breast_cancer, load_iris, load_wine, load_digits
 from sklearn.decomposition import PCA
+from PIL import Image
+from io import BytesIO
+import base64
 import numpy as np
 import plotly.graph_objs as go
 from sklearn.neighbors import KNeighborsClassifier
@@ -16,7 +19,7 @@ from ast import literal_eval
 import dash_html_components as html
 from sklearn.datasets import fetch_openml
 import umap
-
+from sklearn.manifold import TSNE
 
 filename = 'finalized_model.sav'
 cmap_light = [[1, "rgb(165,0,38)"],
@@ -39,11 +42,11 @@ def register_callbacks(app):
                   [Input('select-dataset', 'value'),
                   Input('query-batch-size', 'value'),
                   Input('button', 'n_clicks'),
+                   Input('dim', 'value'),
 
                  ])
-    def update_scatter_plot(dataset, batch_size, n_clicks):
+    def update_scatter_plot(dataset, batch_size, n_clicks, dim):
         uncertainity = []
-
         df, raw_data = get_dataset(dataset)
         # Active learner supports numpy matrices, hence use .values
         x = raw_data['data']
@@ -84,7 +87,12 @@ def register_callbacks(app):
             uncertainity = [1 if value > 0.2 else 0 for value in uncertainity]
             # Plot the query instances
         np.save('selected.npy', x_pool[query_indices])
-        pca = PCA(n_components=2, random_state=100)
+        if dim == "tsne":
+            pca = TSNE(n_components=2, random_state=100)
+        elif dim == "pca":
+            pca = PCA(n_components=2, random_state=100)
+        else:
+            pca = umap.UMAP(n_components=2, random_state=100)
         principals = pca.fit_transform(x_pool)
         df_pca = pd.DataFrame(principals, columns =['1','2'])
         selected = principals[query_indices]
@@ -92,15 +100,15 @@ def register_callbacks(app):
                 go.Scatter(x=df_pca['1'],
                            y=df_pca['2'],
                                mode='markers',
-                               marker=dict(color='grey',
+                               marker=dict(color='lightblue',
                                            #line=dict(color='grey', width=12)
                                            ),
                                name='unlabeled data'),
                 go.Scatter(x=selected[:, 0],
                                y=selected[:, 1],
                                mode='markers',
-                               marker=dict(color='black', size=15,
-                                           line=dict(color='black', width=12)),
+                               marker=dict(color='navy', size=15,
+                                           line=dict(color='navy', width=12)),
                                name='query'+str(n_clicks)),
 
                 # go.Heatmap(x=df_pca['1'],
@@ -120,6 +128,7 @@ def register_callbacks(app):
                 clickmode='event+select')
 
         pickle.dump(learner, open(filename, 'wb'))
+        df_pca.to_pickle('df_pca.pkl')
         fig = go.Figure(data, layout)
         # Labels
         values = (np.unique(y))
