@@ -78,6 +78,10 @@ def register_callbacks(app):
                                     query_strategy=preset_batch)
             predictions = learner.predict(x)
             print(" unqueried score", learner.score(x, y.ravel()))
+            layout = go.Layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                )
 
 
         else:
@@ -85,6 +89,10 @@ def register_callbacks(app):
             learner = pickle.load(open(filename, 'rb'))
             query_indices, query_instance, uncertainity = learner.query(x_pool)
             uncertainity = [1 if value > 0.2 else 0 for value in uncertainity]
+            layout = go.Layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                clickmode='event+select')
             # Plot the query instances
         np.save('selected.npy', x_pool[query_indices])
         if dim == "tsne":
@@ -122,10 +130,7 @@ def register_callbacks(app):
                 #            ),
 
             ]
-        layout = go.Layout(
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                clickmode='event+select')
+
 
         pickle.dump(learner, open(filename, 'wb'))
         df_pca.to_pickle('df_pca.pkl')
@@ -239,7 +244,15 @@ def register_callbacks(app):
                 score = learner.score(x, y)
                 score = ('Query '+ str(n_clicks)+' ' + str(score))
                 decision = go.Figure(data_dec, layout=layout)
-            return decision, score
+        else:
+            if n_clicks is None:
+                x = np.load('x.npy')
+                y = np.load('y.npy')
+                learner = pickle.load(open(filename, 'rb'))
+                predictions = learner.predict(x)
+                score = str(learner.score(x, y))
+                print(score)
+        return decision, score
 
 
 def get_dataset(dataset):
