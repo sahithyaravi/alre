@@ -35,9 +35,9 @@ app.layout = html.Div(
                     className='three columns',
                     style={
                         'display': 'inline-block',
-                        'width': '25%',
+                        'width': '27%',
                         'overflow-y': 'hidden',
-                        'overflow-x': 'auto',
+                        'overflow-x': 'hidden',
                     },
                     children=[
                         html.P('Select a dataset', style={'text-align': 'left', 'color': 'light-grey'}),
@@ -65,6 +65,7 @@ app.layout = html.Div(
                                                    {'label': 'UMAP', 'value': 'umap'}],
                                           value='tsne'
                                      ),
+                html.Button('Submit', id='start'),
 
 
 
@@ -87,7 +88,7 @@ app.layout = html.Div(
                                   debounce=True,
                                   disabled=True,
                                   value=''),
-                          
+                        html.Button('Submit query', id='submit'),
                     ], ),
 
                     html.H4('Score after model fitting:'),

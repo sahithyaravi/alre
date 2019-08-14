@@ -40,13 +40,12 @@ cmap_bold = [[0, '#FF0000'], [0.5, '#00FF00'], [1, '#0000FF']]
 def register_callbacks(app):
     @app.callback([Output('scatter', 'figure'),
                    Output('label', 'children')],
-                  [Input('select-dataset', 'value'),
-                  Input('query-batch-size', 'value'),
-                  Input('button', 'n_clicks'),
-                   Input('dim', 'value'),
-
-                 ])
-    def update_scatter_plot(dataset, batch_size, n_clicks, dim):
+                  [Input('button', 'n_clicks'),
+                   Input('start','n_clicks')],
+                  [State('select-dataset', 'value'),
+                  State('query-batch-size', 'value'),
+                    State('dim', 'value'),])
+    def update_scatter_plot(n_clicks, start, dataset, batch_size, dim):
         uncertainity = []
         df, raw_data = get_dataset(dataset)
         # Active learner supports numpy matrices, hence use .values
