@@ -47,7 +47,7 @@ app.layout = html.Div(
                                               {'label': 'wine', 'value': 'wine'}],
                                      clearable=False,
                                      searchable=False,
-                                     value='bc'
+                                     value='mnist'
                                      ),
                         html.P(' '),
                         html.P('Choose batch size',

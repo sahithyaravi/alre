@@ -21,6 +21,7 @@ from sklearn.datasets import fetch_openml
 import umap
 from sklearn.manifold import TSNE
 
+
 filename = 'finalized_model.sav'
 cmap_light = [[1, "rgb(165,0,38)"],
               [0.5, "rgb(165,0,38)"],
@@ -96,14 +97,23 @@ def register_callbacks(app):
             # Plot the query instances
         np.save('selected.npy', x_pool[query_indices])
         if dim == "tsne":
-            pca = TSNE(n_components=2, random_state=100)
+            # pca = PCA(n_components=25, random_state=100)
+            # data_pca = pca.fit_transform(x_pool)
+            tsne = TSNE(n_components=2, random_state=100, n_iter=300)
+            principals = tsne.fit_transform(x_pool)
         elif dim == "pca":
             pca = PCA(n_components=2, random_state=100)
+            principals = pca.fit_transform(x_pool)
         else:
             pca = umap.UMAP(n_components=2, random_state=100)
-        principals = pca.fit_transform(x_pool)
+            principals = pca.fit_transform(x_pool)
+
         df_pca = pd.DataFrame(principals, columns =['1','2'])
         selected = principals[query_indices]
+        if n_clicks > 0:
+            name = 'query'+str(n_clicks)
+        else:
+            name = 'init random train set'
         data = [
                 go.Scatter(x=df_pca['1'],
                            y=df_pca['2'],
@@ -117,7 +127,7 @@ def register_callbacks(app):
                                mode='markers',
                                marker=dict(color='navy', size=15,
                                            line=dict(color='navy', width=12)),
-                               name='query'+str(n_clicks)),
+                               name=name),
 
                 # go.Heatmap(x=df_pca['1'],
                 #            y=df_pca['2'],
@@ -207,9 +217,11 @@ def register_callbacks(app):
         [Input('hidden-div', 'children'),
          Input('button', 'n_clicks'),
          Input('query-batch-size', 'value'),
+
          ])
     def perform_active_learning(previous, n_clicks, batch_size):
         decision = go.Figure()
+        print("entered init score", previous, n_clicks)
         score = ''
         if previous:
             if(literal_eval(previous)["clicks"]) == batch_size:
@@ -244,14 +256,22 @@ def register_callbacks(app):
                 score = learner.score(x, y)
                 score = ('Query '+ str(n_clicks)+' ' + str(score))
                 decision = go.Figure(data_dec, layout=layout)
-        else:
-            if n_clicks is None:
+        if n_clicks is None:
                 x = np.load('x.npy')
                 y = np.load('y.npy')
                 learner = pickle.load(open(filename, 'rb'))
                 predictions = learner.predict(x)
                 score = str(learner.score(x, y))
-                print(score)
+                df_pca = pd.read_pickle('df_pca.pkl')
+                data_dec = [go.Scatter(x=df_pca['1'],
+                                       y=df_pca['2'],
+                                       mode='markers',
+                                       name='unlabeled data',
+                                       marker=dict(color=predictions,
+                                                   colorscale='Rainbow',
+                                                   showscale=True))]
+                layout = go.Layout(title='Output of classifier')
+                decision = go.Figure(data_dec, layout=layout)
         return decision, score
 
 
