@@ -22,7 +22,7 @@ import umap
 from sklearn.manifold import TSNE
 
 
-filename = 'finalized_model.sav'
+filename = '.cache/finalized_model.sav'
 cmap_light = [[1, "rgb(165,0,38)"],
               [0.5, "rgb(165,0,38)"],
               [0.45, "rgb(215,48,39)"],
@@ -53,6 +53,7 @@ def register_callbacks(app):
         x = raw_data['data']
         y = raw_data['target'].astype(np.uint8)
 
+
         if n_clicks is None or n_clicks == 0:
             # Define our PCA transformer and fit it onto our raw dataset.
             # Randomly choose initial training examples
@@ -60,13 +61,13 @@ def register_callbacks(app):
             x_pool = np.delete(x, query_indices, axis=0)
             y_pool = np.delete(y, query_indices, axis=0)
 
-            np.save('x.npy', x)
-            np.save('y.npy', y)
+            np.save('.cache/x.npy', x)
+            np.save('.cache/y.npy', y)
             x_train = x[query_indices]
             y_train = y[query_indices]
             n_clicks = 0
-            np.save('x_pool.npy', x_pool)
-            np.save('y_pool.npy', y_pool)
+            np.save('.cache/x_pool.npy', x_pool)
+            np.save('.cache/y_pool.npy', y_pool)
             x_pool = x
             # ML model
             rf = RandomForestClassifier(n_jobs=-1, n_estimators=20, max_features=0.8)
@@ -83,10 +84,20 @@ def register_callbacks(app):
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
                 )
+            # Viz
+            tsne = TSNE(n_components=2, random_state=100, n_iter=300)
+            principals_sne = tsne.fit_transform(x)
+            np.save('.cache/sne.npy',principals_sne)
+            pca = PCA(n_components=2, random_state=100)
+            principals_pca = pca.fit_transform(x)
+            np.save('.cache/pca.npy', principals_pca)
+            umaps = umap.UMAP(n_components=2, random_state=100)
+            principals_umap= umaps.fit_transform(x)
+            np.save('.cache/umap.npy', principals_umap)
 
 
         else:
-            x_pool = np.load('x_pool.npy')
+            x_pool = np.load('.cache/x_pool.npy')
             learner = pickle.load(open(filename, 'rb'))
             query_indices, query_instance, uncertainity = learner.query(x_pool)
             uncertainity = [1 if value > 0.2 else 0 for value in uncertainity]
@@ -95,19 +106,13 @@ def register_callbacks(app):
                 plot_bgcolor='rgba(0,0,0,0)',
                 clickmode='event+select')
             # Plot the query instances
-        np.save('selected.npy', x_pool[query_indices])
-        if dim == "tsne":
-            # pca = PCA(n_components=25, random_state=100)
-            # data_pca = pca.fit_transform(x_pool)
-            tsne = TSNE(n_components=2, random_state=100, n_iter=300)
-            principals = tsne.fit_transform(x_pool)
-        elif dim == "pca":
-            pca = PCA(n_components=2, random_state=100)
-            principals = pca.fit_transform(x_pool)
+        np.save('.cache/selected.npy', x_pool[query_indices])
+        if dim=='pca':
+            principals = np.load('.cache/pca.npy')
+        elif dim=="tsne":
+            principals = np.load('.cache/sne.npy')
         else:
-            pca = umap.UMAP(n_components=2, random_state=100)
-            principals = pca.fit_transform(x_pool)
-
+            principals = np.load('.cache/umap.npy')
         df_pca = pd.DataFrame(principals, columns =['1','2'])
         selected = principals[query_indices]
         if n_clicks > 0:
@@ -143,7 +148,7 @@ def register_callbacks(app):
 
 
         pickle.dump(learner, open(filename, 'wb'))
-        df_pca.to_pickle('df_pca.pkl')
+        df_pca.to_pickle('.cache/df_pca.pkl')
         fig = go.Figure(data, layout)
         # Labels
         values = (np.unique(y))
@@ -165,11 +170,11 @@ def register_callbacks(app):
     def enable_query(selectedData, dataset):
         image = " "
         if selectedData is not None:
-            y = np.load('y.npy')
+            y = np.load('.cache/y.npy')
 
             if dataset == "mnist" and selectedData["points"][0]["curveNumber"] == 1:
                 index = selectedData["points"][0]["pointIndex"]
-                image_vector = (np.load('selected.npy')[index])
+                image_vector = (np.load('.cache/selected.npy')[index])
                 image_np = image_vector.reshape(8, 8).astype(np.float64)
                 image_b64 = numpy_to_b64(image_np)
                 image = html.Img(
@@ -226,10 +231,10 @@ def register_callbacks(app):
         if previous:
             if(literal_eval(previous)["clicks"]) == batch_size:
                 print('batch size met')
-                x_pool = np.load('x_pool.npy')
-                y_pool = np.load('y_pool.npy')
-                x = np.load('x.npy')
-                y = np.load('y.npy')
+                x_pool = np.load('.cache/x_pool.npy')
+                y_pool = np.load('.cache/y_pool.npy')
+                x = np.load('.cache/x.npy')
+                y = np.load('.cache/y.npy')
                 learner = pickle.load(open(filename, 'rb'))
                 query_results = literal_eval(previous)['queries']
                 print(query_results)
@@ -241,7 +246,7 @@ def register_callbacks(app):
 
                 # Active learner supports numpy matrices, hence use .values
 
-                df_pca = pd.read_pickle('df_pca.pkl')
+                df_pca = pd.read_pickle('.cache/df_pca.pkl')
                 predictions = learner.predict(x)
                 data_dec = [go.Scatter(x=df_pca['1'],
                                        y=df_pca['2'],
@@ -251,18 +256,18 @@ def register_callbacks(app):
                                                    colorscale=cmap_bold,
                                                    showscale=True))]
                 layout = go.Layout(title='Output of classifier')
-                np.save('x_pool.npy', x_pool)
-                np.save('y_pool.npy', y_pool)
+                np.save('.cache/x_pool.npy', x_pool)
+                np.save('.cache/y_pool.npy', y_pool)
                 score = learner.score(x, y)
                 score = ('Query '+ str(n_clicks)+' ' + str(score))
                 decision = go.Figure(data_dec, layout=layout)
         if n_clicks is None:
-                x = np.load('x.npy')
-                y = np.load('y.npy')
+                x = np.load('.cache/x.npy')
+                y = np.load('.cache/y.npy')
                 learner = pickle.load(open(filename, 'rb'))
                 predictions = learner.predict(x)
                 score = str(learner.score(x, y))
-                df_pca = pd.read_pickle('df_pca.pkl')
+                df_pca = pd.read_pickle('.cache/df_pca.pkl')
                 data_dec = [go.Scatter(x=df_pca['1'],
                                        y=df_pca['2'],
                                        mode='markers',

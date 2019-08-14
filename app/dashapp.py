@@ -2,7 +2,8 @@ import dash
 import dash_html_components as html
 import dash_core_components as dcc
 from app.callbacks import register_callbacks
-
+import os
+import shutil
 app = dash.Dash(__name__, url_base_pathname='/dashboard/')
 app.config.suppress_callback_exceptions = True
 register_callbacks(app)
@@ -74,6 +75,9 @@ app.layout = html.Div(
                 html.Div(className="three columns", children=[
                     html.Button('Next round', id='button', autoFocus=True,
                                 style={'color': 'white', 'background-color': 'green'}),
+                    html.H1(' '),
+                    html.Div(id="dummy"),
+                    html.H1(' '),
                     html.Div([
                         html.H4('Labels'),
                         html.Div(id='label'),
@@ -83,9 +87,9 @@ app.layout = html.Div(
                                   debounce=True,
                                   disabled=True,
                                   value=''),
-                        html.Button('Submit', id='submit'),
+                          
                     ], ),
-                    html.Div(id="dummy"),
+
                     html.H4('Score after model fitting:'),
                     html.Div(id='score'),
                 ]),
@@ -98,4 +102,6 @@ app.layout = html.Div(
 
 # Running the server
 if __name__ == '__main__':
+    shutil.rmtree('.cache', ignore_errors=True)
+    os.mkdir('.cache')
     app.run_server(debug=True)
