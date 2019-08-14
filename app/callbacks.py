@@ -247,14 +247,27 @@ def register_callbacks(app):
 
                 df_pca = pd.read_pickle('.cache/df_pca.pkl')
                 predictions = learner.predict(x)
+                is_correct = (predictions == y)
                 data_dec = [go.Scatter(x=df_pca['1'],
                                        y=df_pca['2'],
                                        mode='markers',
                                        name='unlabeled data',
                                        marker=dict(color=predictions,
                                                    colorscale=cmap_bold,
-                                                   showscale=True))]
-                layout = go.Layout(title='Output of classifier')
+                                                   showscale=True)),
+                            go.Scatter(x=df_pca['1'].values[~is_correct],
+                                       y=df_pca['2'].values[~is_correct],
+                                       mode='markers',
+                                       name='wrong predictions',
+                                       marker=dict(opacity=0,
+                                                   size = 30,
+                                                   colorscale = None,
+                                                   line=dict(
+                                                       color='black',
+                                                       width=3
+                                                   )))
+                            ]
+                layout = go.Layout(title='Output of classifier', showlegend=False)
                 np.save('.cache/x_pool.npy', x_pool)
                 np.save('.cache/y_pool.npy', y_pool)
                 score = learner.score(x, y)
@@ -265,16 +278,29 @@ def register_callbacks(app):
                 y = np.load('.cache/y.npy')
                 learner = pickle.load(open(filename, 'rb'))
                 predictions = learner.predict(x)
+                is_correct = (predictions == y)
                 score = str(learner.score(x, y))
                 df_pca = pd.read_pickle('.cache/df_pca.pkl')
-                data_dec = [go.Scatter(x=df_pca['1'],
-                                       y=df_pca['2'],
+                data_dec = [go.Scatter(x=df_pca['1'].values,
+                                       y=df_pca['2'].values,
                                        mode='markers',
-                                       name='unlabeled data',
+                                       name='predictions',
                                        marker=dict(color=predictions,
                                                    colorscale='Rainbow',
-                                                   showscale=True))]
-                layout = go.Layout(title='Output of classifier')
+                                                   showscale=True)),
+                            go.Scatter(x=df_pca['1'].values[~is_correct],
+                                       y=df_pca['2'].values[~is_correct],
+                                       mode='markers',
+                                       name='wrong predictions',
+                                       marker=dict(opacity=0,
+                                                   size = 30,
+                                                   colorscale = None,
+                                                   line=dict(
+                                                       color='black',
+                                                       width=3
+                                                   )))
+                            ]
+                layout = go.Layout(title='Output of classifier', showlegend=False)
                 decision = go.Figure(data_dec, layout=layout)
         return decision, score
 
