@@ -254,17 +254,24 @@ def register_callbacks(app):
                                        name='unlabeled data',
                                        marker=dict(color=predictions,
                                                    colorscale=cmap_bold,
+                                                   opacity=0.5,
                                                    showscale=True)),
+
                             go.Scatter(x=df_pca['1'].values[~is_correct],
                                        y=df_pca['2'].values[~is_correct],
                                        mode='markers',
+
                                        name='wrong predictions',
-                                       marker=dict(opacity=0,
-                                                   size = 30,
-                                                   colorscale = None,
+                                       marker=dict(
+
+                                                   color = 'rgba(255, 255, 255, 0)',
+                                           
+
                                                    line=dict(
                                                        color='black',
-                                                       width=3
+                                                       width=1.5,
+
+
                                                    )))
                             ]
                 layout = go.Layout(title='Output of classifier', showlegend=False)
@@ -286,18 +293,22 @@ def register_callbacks(app):
                                        mode='markers',
                                        name='predictions',
                                        marker=dict(color=predictions,
+                                                   opacity=0.5,
                                                    colorscale='Rainbow',
                                                    showscale=True)),
                             go.Scatter(x=df_pca['1'].values[~is_correct],
                                        y=df_pca['2'].values[~is_correct],
                                        mode='markers',
                                        name='wrong predictions',
-                                       marker=dict(opacity=0,
-                                                   size = 30,
-                                                   colorscale = None,
+
+                                       marker=dict(
+
+                                           color='rgba(255, 255, 255, 0)',
+
                                                    line=dict(
                                                        color='black',
-                                                       width=3
+                                                       width=1.5,
+
                                                    )))
                             ]
                 layout = go.Layout(title='Output of classifier', showlegend=False)
