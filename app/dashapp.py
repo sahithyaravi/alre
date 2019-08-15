@@ -31,13 +31,15 @@ app.layout = html.Div(
             ]),
         # Body
         html.Div(className="row background", style={"padding" : "10px"}, children=[
+            dcc.Store(id='store'),
+            dcc.Store(id='querystore'),
+            dcc.Store(id='store_dataset'),
                 html.Div(
-                    className='three columns',
+                    className='two columns',
                     style={
                         'display': 'inline-block',
-                        'width': '27%',
                         'overflow-y': 'hidden',
-                        'overflow-x': 'hidden',
+                        'overflow-x': 'auto',
                     },
                     children=[
                         html.P('Select a dataset', style={'text-align': 'left', 'color': 'light-grey'}),
@@ -48,7 +50,7 @@ app.layout = html.Div(
                                               {'label': 'wine', 'value': 'wine'}],
                                      clearable=False,
                                      searchable=False,
-                                     value='mnist'
+                                     value='bc'
                                      ),
                         html.P(' '),
                         html.P('Choose batch size',
@@ -65,16 +67,17 @@ app.layout = html.Div(
                                                    {'label': 'UMAP', 'value': 'umap'}],
                                           value='tsne'
                                      ),
-                html.Button('Submit', id='start'),
+                html.Button('Start', id='start'),
 
 
 
                     ]),
-                html.Div(className="six columns", children=[
+                html.Div(className="eight columns", children=[
                     dcc.Loading(dcc.Graph(id='scatter'), fullscreen=True),
-                    dcc.Loading(dcc.Graph(id='decision'), fullscreen=True)]),
-                html.Div(className="three columns", children=[
-                    html.Button('Next round', id='button', autoFocus=True,
+                    dcc.Loading(dcc.Graph(id='decision'), fullscreen=True),
+                ], style={"height": "100%"}),
+                html.Div(className="two columns", children=[
+                    html.Button('Next round', id='next_round', autoFocus=True,
                                 style={'color': 'white', 'background-color': 'green'}),
                     html.H1(' '),
                     html.Div(id="dummy"),

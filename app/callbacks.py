@@ -4,6 +4,7 @@ from sklearn.decomposition import PCA
 from PIL import Image
 from io import BytesIO
 import base64
+import PIL.ImageOps
 import numpy as np
 import plotly.graph_objs as go
 from sklearn.neighbors import KNeighborsClassifier
@@ -39,21 +40,25 @@ cmap_bold = [[0, '#FF0000'], [0.5, '#00FF00'], [1, '#0000FF']]
 
 def register_callbacks(app):
     @app.callback([Output('scatter', 'figure'),
-                   Output('label', 'children')],
-                  [Input('button', 'n_clicks'),
-                   Input('start','n_clicks')],
+                   Output('label', 'children'),
+                   Output('store', 'data'),],
+                  [Input('next_round', 'n_clicks'),
+                   Input('start', 'n_clicks')],
                   [State('select-dataset', 'value'),
                   State('query-batch-size', 'value'),
-                    State('dim', 'value'),])
-    def update_scatter_plot(n_clicks, start, dataset, batch_size, dim):
+                   State('dim', 'value'),
+                   State('store','data')])
+    def update_scatter_plot(n_clicks, start, dataset, batch_size, dim, storedata):
+        if storedata is None:
+            storedata = 0
+        if start is None:
+            start = 0
         uncertainity = []
         df, raw_data = get_dataset(dataset)
         # Active learner supports numpy matrices, hence use .values
         x = raw_data['data']
         y = raw_data['target'].astype(np.uint8)
-
-
-        if n_clicks is None or n_clicks == 0:
+        if n_clicks is None or n_clicks == 0 or start > storedata:
             # Define our PCA transformer and fit it onto our raw dataset.
             # Randomly choose initial training examples
             query_indices = np.random.randint(low=0, high=x.shape[0] + 1, size=batch_size)
@@ -77,6 +82,7 @@ def register_callbacks(app):
                                     X_training=x_train,
                                     y_training=y_train.ravel(),
                                     query_strategy=preset_batch)
+            pickle.dump(learner, open(filename, 'wb'))
             predictions = learner.predict(x)
             print(" unqueried score", learner.score(x, y.ravel()))
             layout = go.Layout(
@@ -93,8 +99,6 @@ def register_callbacks(app):
             umaps = umap.UMAP(n_components=2, random_state=100)
             principals_umap= umaps.fit_transform(x)
             np.save('.cache/umap.npy', principals_umap)
-
-
         else:
             x_pool = np.load('.cache/x_pool.npy')
             learner = pickle.load(open(filename, 'rb'))
@@ -144,9 +148,6 @@ def register_callbacks(app):
                 #            ),
 
             ]
-
-
-        pickle.dump(learner, open(filename, 'wb'))
         df_pca.to_pickle('.cache/df_pca.pkl')
         fig = go.Figure(data, layout)
         # Labels
@@ -158,7 +159,7 @@ def register_callbacks(app):
         label = ' '
         for value in values:
             label = label + str(str(value)+ ' : ' + str(names[int(value)]))+"\n"
-        return fig, label
+        return fig, label, start
 
     @app.callback(
         [Output('query', 'disabled'),
@@ -172,27 +173,39 @@ def register_callbacks(app):
             y = np.load('.cache/y.npy')
 
             if dataset == "mnist" and selectedData["points"][0]["curveNumber"] == 1:
-                index = selectedData["points"][0]["pointIndex"]
-                image_vector = (np.load('.cache/selected.npy')[index])
-                image_np = image_vector.reshape(8, 8).astype(np.float64)
-                image_b64 = numpy_to_b64(image_np)
-                image = html.Img(
-                    src="data:image/png;base64, " + image_b64,
-                    style={"height": "25vh", "display": "block", "margin": "auto"},
-                )
+                try:
+                    index = selectedData["points"][0]["pointIndex"]
+                    image_vector = (np.load('.cache/selected.npy')[index])
+                    image_np = image_vector.reshape(8, 8).astype(np.float64)
+                    image_b64 = numpy_to_b64(image_np)
+                    image = html.Img(
+                        src="data:image/png;base64, " + image_b64,
+                        style={"display": "block", "height": "10vh", "margin": "auto"},
+                    )
+                except ValueError:
+                    pass
             return False, 'enter labels' + str(np.unique(y)), image
         else:
             return True, 'enter label', image
 
     @app.callback(
-        Output('hidden-div', 'children'),
+        [
+          Output('hidden-div', 'children'),
+        Output('store_dataset', 'data')],
         [Input('scatter', 'selectedData'),
-         Input('submit', 'n_clicks')],
-        [State('query', 'value'),
+         Input('submit', 'n_clicks'),
+         Input('start', 'n_clicks'),
+         ],
+        [State('store_dataset', 'data'),
+         State('query', 'value'),
          State('hidden-div', 'children')])
-    def get_selected_data(clickData, submit, query, previous):
-        if previous is None:
-            print()
+    def get_selected_data(clickData, submit,  start, store, query, previous,):
+        if store is None:
+            store = 0
+        if start is None:
+            start = 0
+
+        if previous is None or start > store:
             result_dict = dict()
             result_dict['clicks'] = 0
             result_dict['points'] = []
@@ -213,106 +226,97 @@ def register_callbacks(app):
             else:
                 result_dict = json.loads(previous)
 
-        return json.dumps(result_dict)
+        return json.dumps(result_dict), start
 
     @app.callback(
         [Output('decision', 'figure'),
-         Output('score', 'children')],
+         Output('score', 'children'),
+         ],
         [Input('hidden-div', 'children'),
-         Input('button', 'n_clicks'),
+         Input('next_round', 'n_clicks'),
          Input('query-batch-size', 'value'),
+         Input('label', 'children')
 
-         ])
-    def perform_active_learning(previous, n_clicks, batch_size):
+         ],[State('querystore','data')])
+    def perform_active_learning(previous, n_clicks, batch_size, labels, query_round):
         decision = go.Figure()
-        print("entered init score", previous, n_clicks)
         score = ''
-        if previous:
-            if(literal_eval(previous)["clicks"]) == batch_size:
-                print('batch size met')
-                x_pool = np.load('.cache/x_pool.npy')
-                y_pool = np.load('.cache/y_pool.npy')
-                x = np.load('.cache/x.npy')
-                y = np.load('.cache/y.npy')
-                learner = pickle.load(open(filename, 'rb'))
-                query_results = literal_eval(previous)['queries']
-                print(query_results)
-                query_indices = list(range(0, batch_size))
-                learner.teach(x_pool[query_indices], query_results)
-                # Remove query indices from unlabelled pool
-                x_pool = np.delete(x_pool, query_indices, axis=0)
-                y_pool = np.delete(y_pool, query_indices)
+        colorscale = 'Rainbow'
+        print(previous)
 
-                # Active learner supports numpy matrices, hence use .values
-
-                df_pca = pd.read_pickle('.cache/df_pca.pkl')
-                predictions = learner.predict(x)
-                is_correct = (predictions == y)
-                data_dec = [go.Scatter(x=df_pca['1'],
-                                       y=df_pca['2'],
-                                       mode='markers',
-                                       name='unlabeled data',
-                                       marker=dict(color=predictions,
-                                                   colorscale=cmap_bold,
-                                                   opacity=0.5,
-                                                   showscale=True)),
-
-                            go.Scatter(x=df_pca['1'].values[~is_correct],
-                                       y=df_pca['2'].values[~is_correct],
-                                       mode='markers',
-
-                                       name='wrong predictions',
-                                       marker=dict(
-
-                                                   color = 'rgba(255, 255, 255, 0)',
-                                           
-
-                                                   line=dict(
-                                                       color='black',
-                                                       width=1.5,
-
-
-                                                   )))
-                            ]
-                layout = go.Layout(title='Output of classifier', showlegend=False)
-                np.save('.cache/x_pool.npy', x_pool)
-                np.save('.cache/y_pool.npy', y_pool)
-                score = learner.score(x, y)
-                score = ('Query '+ str(n_clicks)+' ' + str(score))
-                decision = go.Figure(data_dec, layout=layout)
-        if n_clicks is None:
+        if n_clicks is None and labels is not None:
                 x = np.load('.cache/x.npy')
                 y = np.load('.cache/y.npy')
                 learner = pickle.load(open(filename, 'rb'))
                 predictions = learner.predict(x)
                 is_correct = (predictions == y)
-                score = str(learner.score(x, y))
+                score = str(round(learner.score(x, y),3))
                 df_pca = pd.read_pickle('.cache/df_pca.pkl')
-                data_dec = [go.Scatter(x=df_pca['1'].values,
-                                       y=df_pca['2'].values,
+                data_dec = [go.Scatter(x=df_pca['1'].values[is_correct],
+                                       y=df_pca['2'].values[is_correct],
                                        mode='markers',
-                                       name='predictions',
-                                       marker=dict(color=predictions,
-                                                   opacity=0.5,
-                                                   colorscale='Rainbow',
+                                       name='correct predictions',
+                                       marker=dict(color=predictions[is_correct],
+                                                   colorscale=colorscale,
+                                                   opacity=0.7,
                                                    showscale=True)),
+
                             go.Scatter(x=df_pca['1'].values[~is_correct],
                                        y=df_pca['2'].values[~is_correct],
                                        mode='markers',
                                        name='wrong predictions',
-
-                                       marker=dict(
-
-                                           color='rgba(255, 255, 255, 0)',
-
-                                                   line=dict(
-                                                       color='black',
-                                                       width=1.5,
-
-                                                   )))
-                            ]
+                                       marker=dict(symbol="x",
+                                                   opacity=0.7,
+                                                   colorscale=colorscale,
+                                                   color=predictions[~is_correct]))]
                 layout = go.Layout(title='Output of classifier', showlegend=False)
                 decision = go.Figure(data_dec, layout=layout)
+        else:
+            if previous and n_clicks is not None:
+                if(literal_eval(previous)["clicks"]) == (batch_size*n_clicks):
+                    print('batch size met')
+                    x_pool = np.load('.cache/x_pool.npy')
+                    y_pool = np.load('.cache/y_pool.npy')
+                    x = np.load('.cache/x.npy')
+                    y = np.load('.cache/y.npy')
+                    learner = pickle.load(open(filename, 'rb'))
+                    query_results = literal_eval(previous)['queries'][0:batch_size]
+                    query_indices = list(range(0, batch_size))
+                    learner.teach(x_pool[query_indices], query_results)
+                    # Remove query indices from unlabelled pool
+                    x_pool = np.delete(x_pool, query_indices, axis=0)
+                    y_pool = np.delete(y_pool, query_indices)
+
+                    # Active learner supports numpy matrices, hence use .values
+
+                    df_pca = pd.read_pickle('.cache/df_pca.pkl')
+                    predictions = learner.predict(x)
+                    is_correct = (predictions == y)
+                    data_dec = [go.Scatter(x=df_pca['1'].values[is_correct],
+                                           y=df_pca['2'].values[is_correct],
+                                           mode='markers',
+                                           name='correct predictions',
+                                           marker=dict(color=predictions[is_correct],
+                                                       colorscale=colorscale,
+                                                       opacity=0.7,
+                                                       showscale=True)),
+
+                                go.Scatter(x=df_pca['1'].values[~is_correct],
+                                           y=df_pca['2'].values[~is_correct],
+                                           mode='markers',
+                                           name='wrong predictions',
+                                           marker=dict(symbol="x",
+                                                       colorscale=colorscale,
+                                                       opacity=0.7,
+                                                       color=predictions[~is_correct]))]
+                    layout = go.Layout(title='Output of classifier', showlegend=False)
+                    np.save('.cache/x_pool.npy', x_pool)
+                    np.save('.cache/y_pool.npy', y_pool)
+                    score = learner.score(x, y)
+                    score = ('Query#'+ str(n_clicks)+' ' + str(round(score, 3)))
+                    print(score)
+                    decision = go.Figure(data_dec, layout=layout)
+
         return decision, score
 
 
@@ -341,7 +345,6 @@ def numpy_to_b64(array, scalar=True):
     buff = BytesIO()
     im_pil.save(buff, format="png")
     im_b64 = base64.b64encode(buff.getvalue()).decode("utf-8")
-
     return im_b64
 
 
