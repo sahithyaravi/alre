@@ -21,7 +21,7 @@ import dash_html_components as html
 from sklearn.datasets import fetch_openml
 import umap
 from sklearn.manifold import TSNE
-from sklearn.feature_extraction.text import CountVectorizer,TfidfVectorizer
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 import nltk
 from nltk.corpus import stopwords
 
@@ -43,13 +43,14 @@ cmap_bold = [[0, '#FF0000'], [0.5, '#00FF00'], [1, '#0000FF']]
 def register_callbacks(app):
     @app.callback([Output('scatter', 'figure'),
                    Output('label', 'children'),
-                   Output('store', 'data'),],
+                   Output('store', 'data'),
+                   Output('radio_label', 'options')],
                   [Input('next_round', 'n_clicks'),
                    Input('start', 'n_clicks')],
                   [State('select-dataset', 'value'),
                   State('query-batch-size', 'value'),
                    State('dim', 'value'),
-                   State('store','data')])
+                   State('store', 'data')])
     def update_scatter_plot(n_clicks, start, dataset, batch_size, dim, storedata):
         if storedata is None:
             storedata = 0
@@ -57,6 +58,7 @@ def register_callbacks(app):
             start = 0
         uncertainity = []
         df, x, y = get_dataset(dataset)
+
         # Active learner supports numpy matrices, hence use .values
 
         if n_clicks is None or n_clicks == 0 or start > storedata:
@@ -91,15 +93,15 @@ def register_callbacks(app):
                 plot_bgcolor='rgba(0,0,0,0)',
                 )
             # Viz
-            tsne = TSNE(n_components=2, random_state=100, n_iter=300)
-            principals_sne = tsne.fit_transform(x)
-            np.save('.cache/sne.npy',principals_sne)
             pca = PCA(n_components=2, random_state=100)
             principals_pca = pca.fit_transform(x)
             np.save('.cache/pca.npy', principals_pca)
-            umaps = umap.UMAP(n_components=2, random_state=100)
-            principals_umap= umaps.fit_transform(x)
-            np.save('.cache/umap.npy', principals_umap)
+           # tsne = TSNE(n_components=2, random_state=100, n_iter=300)
+           # principals_sne = tsne.fit_transform(x)
+           # np.save('.cache/sne.npy',principals_sne)
+           # umaps = umap.UMAP(n_components=2, random_state=100)
+           # principals_umap= umaps.fit_transform(x)
+           # np.save('.cache/umap.npy', principals_umap)
         else:
             x_pool = np.load('.cache/x_pool.npy')
             learner = pickle.load(open(filename, 'rb'))
@@ -112,32 +114,32 @@ def register_callbacks(app):
             # Plot the query instances
         np.save('.cache/selected.npy', x_pool[query_indices])
         df.ix[query_indices].to_pickle('.cache/selected.pkl')
-        if dim =='pca':
+        if dim == 'pca':
             principals = np.load('.cache/pca.npy')
-        elif dim =="tsne":
+        elif dim == "tsne":
             principals = np.load('.cache/sne.npy')
         else:
             principals = np.load('.cache/umap.npy')
-        df_pca = pd.DataFrame(principals, columns =['1','2'])
+        df_pca = pd.DataFrame(principals, columns=['1', '2'])
         selected = principals[query_indices]
         if n_clicks > 0:
             name = 'query'+str(n_clicks)
         else:
             name = 'init random train set'
         data = [
-                go.Scatter(x=df_pca['1'],
-                           y=df_pca['2'],
-                               mode='markers',
-                               marker=dict(color='lightblue',
-                                           #line=dict(color='grey', width=12)
-                                           ),
-                               name='unlabeled data'),
-                go.Scatter(x=selected[:, 0],
-                               y=selected[:, 1],
-                               mode='markers',
-                               marker=dict(color='navy', size=15,
-                                           line=dict(color='navy', width=12)),
-                               name=name),
+            go.Scatter(x=df_pca['1'],
+                       y=df_pca['2'],
+                       mode='markers',
+                       marker=dict(color='lightblue',
+                                   #line=dict(color='grey', width=12)
+                                   ),
+                       name='unlabeled data'),
+            go.Scatter(x=selected[:, 0],
+                       y=selected[:, 1],
+                       mode='markers',
+                       marker=dict(color='navy', size=15,
+                                   line=dict(color='navy', width=12)),
+                       name=name),
 
                 # go.Heatmap(x=df_pca['1'],
                 #            y=df_pca['2'],
@@ -153,20 +155,20 @@ def register_callbacks(app):
         df_pca.to_pickle('.cache/df_pca.pkl')
         fig = go.Figure(data, layout)
         # Labels
-        values = (np.unique(y))
-        # try:
-        #     names = raw_data.target_names
-        # except AttributeError:
+        values = np.unique(y)
+        labels = df['target'].unique()
+        tuple_list = zip(values, labels)
+        options = []
+        for l, value in tuple_list:
+            options.append({'label': l, 'value': value})
         names = values
         label = ' '
         for value in values:
-            label = label + str(str(value)+ ' : ' + str(names[int(value)]))+"\n"
-        return fig, label, start
+            label = dataset
+        return fig, label, start, options
 
     @app.callback(
-        [Output('query', 'disabled'),
-         Output('query', 'placeholder'),
-         Output('dummy', 'children')],
+        Output('dummy', 'children'),
         [Input('scatter', 'selectedData'),
          Input('select-dataset', 'value')])
     def enable_query(selectedData, dataset):
@@ -194,22 +196,23 @@ def register_callbacks(app):
                 except ValueError:
                     pass
 
-            return False, 'enter labels' + str(np.unique(y)), image
+            return image
         else:
-            return True, 'enter label', image
+            return image
 
     @app.callback(
         [
-          Output('hidden-div', 'children'),
-        Output('store_dataset', 'data')],
+         Output('hidden-div', 'children'),
+         Output('store_dataset', 'data')],
         [Input('scatter', 'selectedData'),
          Input('submit', 'n_clicks'),
          Input('start', 'n_clicks'),
          ],
         [State('store_dataset', 'data'),
-         State('query', 'value'),
-         State('hidden-div', 'children')])
-    def get_selected_data(clickData, submit,  start, store, query, previous,):
+         State('hidden-div', 'children'),
+         State('radio_label', 'value')])
+    def get_selected_data(clickData, submit,  start, store, previous, radio_label):
+
         if store is None:
             store = 0
         if start is None:
@@ -221,13 +224,13 @@ def register_callbacks(app):
             result_dict['points'] = []
             result_dict['queries'] = []
         else:
-            if clickData is not None and query and previous is not None:
+            if clickData is not None and radio_label is not None and previous is not None:
                 if submit > literal_eval(previous)["clicks"]:
 
                     previous_list = json.loads(previous)
                     result_dict = previous_list
                     points = previous_list['points'] + clickData['points']
-                    queries = previous_list['queries']+[int(query)]
+                    queries = previous_list['queries']+[int(radio_label)]
                     result_dict['points'] = points
                     result_dict['clicks'] = submit
                     result_dict['queries'] = queries
@@ -245,46 +248,44 @@ def register_callbacks(app):
         [Input('hidden-div', 'children'),
          Input('next_round', 'n_clicks'),
          Input('query-batch-size', 'value'),
-         Input('label', 'children')
+         Input('label', 'children'),
+         Input('select-dataset', 'value'),
 
-         ],[State('querystore','data')])
-    def perform_active_learning(previous, n_clicks, batch_size, labels, query_round):
+         ], [State('querystore', 'data')])
+    def perform_active_learning(previous, n_clicks, batch_size, labels, dataset, query_round):
         decision = go.Figure()
         score = ''
         colorscale = 'Rainbow'
-        print(previous)
+        if n_clicks is None and labels == dataset:
+            x = np.load('.cache/x.npy')
+            y = np.load('.cache/y.npy')
+            learner = pickle.load(open(filename, 'rb'))
+            predictions = learner.predict(x)
+            is_correct = (predictions == y)
+            score = str(round(learner.score(x, y), 3))
+            df_pca = pd.read_pickle('.cache/df_pca.pkl')
+            data_dec = [go.Scatter(x=df_pca['1'].values[is_correct],
+                                   y=df_pca['2'].values[is_correct],
+                                   mode='markers',
+                                   name='correct predictions',
+                                   marker=dict(color=predictions[is_correct],
+                                               colorscale=colorscale,
+                                               opacity=0.7,
+                                               showscale=True)),
 
-        if n_clicks is None and labels is not None:
-                x = np.load('.cache/x.npy')
-                y = np.load('.cache/y.npy')
-                learner = pickle.load(open(filename, 'rb'))
-                predictions = learner.predict(x)
-                is_correct = (predictions == y)
-                score = str(round(learner.score(x, y),3))
-                df_pca = pd.read_pickle('.cache/df_pca.pkl')
-                data_dec = [go.Scatter(x=df_pca['1'].values[is_correct],
-                                       y=df_pca['2'].values[is_correct],
-                                       mode='markers',
-                                       name='correct predictions',
-                                       marker=dict(color=predictions[is_correct],
-                                                   colorscale=colorscale,
-                                                   opacity=0.7,
-                                                   showscale=True)),
-
-                            go.Scatter(x=df_pca['1'].values[~is_correct],
-                                       y=df_pca['2'].values[~is_correct],
-                                       mode='markers',
-                                       name='wrong predictions',
-                                       marker=dict(symbol="x",
-                                                   opacity=0.7,
-                                                   colorscale=colorscale,
-                                                   color=predictions[~is_correct]))]
-                layout = go.Layout(title='Output of classifier', showlegend=False)
-                decision = go.Figure(data_dec, layout=layout)
+                        go.Scatter(x=df_pca['1'].values[~is_correct],
+                                   y=df_pca['2'].values[~is_correct],
+                                   mode='markers',
+                                   name='wrong predictions',
+                                   marker=dict(symbol="x",
+                                               opacity=0.7,
+                                               colorscale=colorscale,
+                                               color=predictions[~is_correct]))]
+            layout = go.Layout(title='Output of classifier', showlegend=False)
+            decision = go.Figure(data_dec, layout=layout)
         else:
             if previous and n_clicks is not None:
                 if(literal_eval(previous)["clicks"]) == (batch_size*n_clicks):
-                    print('batch size met')
                     x_pool = np.load('.cache/x_pool.npy')
                     y_pool = np.load('.cache/y_pool.npy')
                     x = np.load('.cache/x.npy')
@@ -323,17 +324,16 @@ def register_callbacks(app):
                     np.save('.cache/x_pool.npy', x_pool)
                     np.save('.cache/y_pool.npy', y_pool)
                     score = learner.score(x, y)
-                    score = ('Query#'+ str(n_clicks)+' ' + str(round(score, 3)))
-                    print(score)
+                    score = ('Query#' + str(n_clicks)+' ' + str(round(score, 3)))
                     decision = go.Figure(data_dec, layout=layout)
-
         return decision, score
 
 
 def get_dataset(dataset):
     if dataset == "mnist":
         raw_data = load_digits()  # fetch_openml('mnist_784', version=1)
-        df = pd.DataFrame(data=np.c_[raw_data['data'], raw_data['target']])
+        df = pd.DataFrame(data=raw_data['data'])
+        df['target'] = raw_data['target']
         x = raw_data['data']
         y = raw_data['target'].astype(np.uint8)
 
@@ -345,8 +345,8 @@ def get_dataset(dataset):
         tfid = TfidfVectorizer(max_features=1500, min_df=5, max_df=0.7,
                                stop_words=stopwords.words('english'))
         x = tfid.fit_transform(x).toarray()
-
-        print(type(x), type(y))
+        df['target'] = df['label']
+        df.drop('text', axis=1)
 
     else:
         if dataset == 'bc':
@@ -359,6 +359,7 @@ def get_dataset(dataset):
                           columns=list(raw_data['feature_names']) + ['target'])
         x = raw_data['data']
         y = raw_data['target'].astype(np.uint8)
+    #print(df.head())
     return df, x, y
 
 
