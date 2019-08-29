@@ -44,13 +44,14 @@ app.layout = html.Div(
                     children=[
                         html.P('Select a dataset', style={'text-align': 'left', 'color': 'light-grey'}),
                         dcc.Dropdown(id='select-dataset',
-                                     options=[{'label': 'mnist-mini', 'value': 'mnist'},
+                                     options=[{'label': 'davidson', 'value': 'davidson'},
+                                              {'label': 'mnist-mini', 'value': 'mnist'},
                                               {'label': 'iris', 'value': 'iris'},
                                               {'label': 'breast-cancer', 'value': 'bc'},
                                               {'label': 'wine', 'value': 'wine'}],
                                      clearable=False,
                                      searchable=False,
-                                     value='bc'
+                                     value='davidson'
                                      ),
                         html.P(' '),
                         html.P('Choose batch size',
@@ -65,7 +66,7 @@ app.layout = html.Div(
                                           options=[{'label': 'PCA', 'value': 'pca'},
                                                    {'label': 'T-SNE', 'value': 'tsne'},
                                                    {'label': 'UMAP', 'value': 'umap'}],
-                                          value='tsne'
+                                          value='pca'
                                      ),
                 html.Button('Start', id='start'),
 

@@ -21,7 +21,9 @@ import dash_html_components as html
 from sklearn.datasets import fetch_openml
 import umap
 from sklearn.manifold import TSNE
-
+from sklearn.feature_extraction.text import CountVectorizer,TfidfVectorizer
+import nltk
+from nltk.corpus import stopwords
 
 filename = '.cache/finalized_model.sav'
 cmap_light = [[1, "rgb(165,0,38)"],
@@ -54,10 +56,9 @@ def register_callbacks(app):
         if start is None:
             start = 0
         uncertainity = []
-        df, raw_data = get_dataset(dataset)
+        df, x, y = get_dataset(dataset)
         # Active learner supports numpy matrices, hence use .values
-        x = raw_data['data']
-        y = raw_data['target'].astype(np.uint8)
+
         if n_clicks is None or n_clicks == 0 or start > storedata:
             # Define our PCA transformer and fit it onto our raw dataset.
             # Randomly choose initial training examples
@@ -110,9 +111,10 @@ def register_callbacks(app):
                 clickmode='event+select')
             # Plot the query instances
         np.save('.cache/selected.npy', x_pool[query_indices])
-        if dim=='pca':
+        df.ix[query_indices].to_pickle('.cache/selected.pkl')
+        if dim =='pca':
             principals = np.load('.cache/pca.npy')
-        elif dim=="tsne":
+        elif dim =="tsne":
             principals = np.load('.cache/sne.npy')
         else:
             principals = np.load('.cache/umap.npy')
@@ -152,10 +154,10 @@ def register_callbacks(app):
         fig = go.Figure(data, layout)
         # Labels
         values = (np.unique(y))
-        try:
-            names = raw_data.target_names
-        except AttributeError:
-            names = values
+        # try:
+        #     names = raw_data.target_names
+        # except AttributeError:
+        names = values
         label = ' '
         for value in values:
             label = label + str(str(value)+ ' : ' + str(names[int(value)]))+"\n"
@@ -184,6 +186,14 @@ def register_callbacks(app):
                     )
                 except ValueError:
                     pass
+            elif dataset == "davidson" and selectedData["points"][0]["curveNumber"] == 1:
+                try:
+                    index = selectedData["points"][0]["pointIndex"]
+                    selected = pd.read_pickle('.cache/selected.pkl').reset_index()
+                    image = html.Div(html.H6(selected.ix[index]['text']))
+                except ValueError:
+                    pass
+
             return False, 'enter labels' + str(np.unique(y)), image
         else:
             return True, 'enter label', image
@@ -209,7 +219,7 @@ def register_callbacks(app):
             result_dict = dict()
             result_dict['clicks'] = 0
             result_dict['points'] = []
-            result_dict['queries']=[]
+            result_dict['queries'] = []
         else:
             if clickData is not None and query and previous is not None:
                 if submit > literal_eval(previous)["clicks"]:
@@ -324,6 +334,20 @@ def get_dataset(dataset):
     if dataset == "mnist":
         raw_data = load_digits()  # fetch_openml('mnist_784', version=1)
         df = pd.DataFrame(data=np.c_[raw_data['data'], raw_data['target']])
+        x = raw_data['data']
+        y = raw_data['target'].astype(np.uint8)
+
+    elif dataset == "davidson":
+        df = pd.read_csv('datasets/davidson_dataset.csv')
+        x = df['text'].values
+        y = df['label'].values
+        nltk.download('stopwords')
+        tfid = TfidfVectorizer(max_features=1500, min_df=5, max_df=0.7,
+                               stop_words=stopwords.words('english'))
+        x = tfid.fit_transform(x).toarray()
+
+        print(type(x), type(y))
+
     else:
         if dataset == 'bc':
             raw_data = load_breast_cancer()
@@ -333,7 +357,9 @@ def get_dataset(dataset):
             raw_data = load_wine()
         df = pd.DataFrame(data=np.c_[raw_data['data'], raw_data['target']],
                           columns=list(raw_data['feature_names']) + ['target'])
-    return df, raw_data
+        x = raw_data['data']
+        y = raw_data['target'].astype(np.uint8)
+    return df, x, y
 
 
 def numpy_to_b64(array, scalar=True):
