@@ -14,68 +14,21 @@ def register_callbacks(app):
                    State('dim', 'value'),
                    State('store', 'data')])
     def update_scatter_plot(n_clicks, start, dataset, batch_size, dim, storedata):
+        df, x, y = get_dataset(dataset)
         if storedata is None:
             storedata = 0
         if start is None:
             start = 0
-        uncertainity = []
-        df, x, y = get_dataset(dataset)
-
-        # Active learner supports numpy matrices, hence use .values
-
         if n_clicks is None or n_clicks == 0 or start > storedata:
-            # Define our PCA transformer and fit it onto our raw dataset.
-            # Randomly choose initial training examples
-            query_indices = np.random.randint(low=0, high=x.shape[0] + 1, size=batch_size)
-            x_pool = np.delete(x, query_indices, axis=0)
-            y_pool = np.delete(y, query_indices, axis=0)
-
-            np.save('.cache/x.npy', x)
-            np.save('.cache/y.npy', y)
-            x_train = x[query_indices]
-            y_train = y[query_indices]
             n_clicks = 0
-            np.save('.cache/x_pool.npy', x_pool)
-            np.save('.cache/y_pool.npy', y_pool)
-            x_pool = x
-            # ML model
-            rf = RandomForestClassifier(n_jobs=-1, n_estimators=20, max_features=0.8)
-            # batch sampling
-            preset_batch = partial(uncertainty_batch_sampling, n_instances=batch_size)
-            # AL model
-            learner = ActiveLearner(estimator=rf,
-                                    X_training=x_train,
-                                    y_training=y_train.ravel(),
-                                    query_strategy=preset_batch)
-            pickle.dump(learner, open(filename, 'wb'))
-            predictions = learner.predict(x)
-            print(" unqueried score", learner.score(x, y.ravel()))
-            layout = go.Layout(
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                )
-            # Viz
-            pca = PCA(n_components=2, random_state=100)
-            principals_pca = pca.fit_transform(x)
-            np.save('.cache/pca.npy', principals_pca)
-           # tsne = TSNE(n_components=2, random_state=100, n_iter=300)
-           # principals_sne = tsne.fit_transform(x)
-           # np.save('.cache/sne.npy',principals_sne)
-           # umaps = umap.UMAP(n_components=2, random_state=100)
-           # principals_umap= umaps.fit_transform(x)
-           # np.save('.cache/umap.npy', principals_umap)
+            query_indices, x_pool = init_active_learner(x, y, batch_size)
+            init_visualization(x)
         else:
             x_pool = np.load('.cache/x_pool.npy')
             learner = pickle.load(open(filename, 'rb'))
             query_indices, query_instance, uncertainity = learner.query(x_pool)
-            uncertainity = [1 if value > 0.2 else 0 for value in uncertainity]
-            layout = go.Layout(
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                clickmode='event+select')
-            # Plot the query instances
-        np.save('.cache/selected.npy', x_pool[query_indices])
-        df.ix[query_indices].to_pickle('.cache/selected.pkl')
+
+        # Plot the query instances
         if dim == 'pca':
             principals = np.load('.cache/pca.npy')
         elif dim == "tsne":
@@ -92,30 +45,20 @@ def register_callbacks(app):
             go.Scatter(x=df_pca['1'],
                        y=df_pca['2'],
                        mode='markers',
-                       marker=dict(color='lightblue',
-                                   #line=dict(color='grey', width=12)
-                                   ),
+                       marker=dict(color='lightblue'),
                        name='unlabeled data'),
             go.Scatter(x=selected[:, 0],
                        y=selected[:, 1],
                        mode='markers',
                        marker=dict(color='navy', size=15,
                                    line=dict(color='navy', width=12)),
-                       name=name),
-
-                # go.Heatmap(x=df_pca['1'],
-                #            y=df_pca['2'],
-                #            z=uncertainity,
-                #            colorscale='RdBu',
-                #           opacity=0.5,
-                #            hoverinfo='none',
-                #            #zsmooth='fast',
-                #           showscale=False
-                #            ),
-
-            ]
-        df_pca.to_pickle('.cache/df_pca.pkl')
+                       name=name)]
+        layout = go.Layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            clickmode='event+select')
         fig = go.Figure(data, layout)
+
         # Labels
         values = np.unique(y)
         labels = df['target'].unique()
@@ -123,11 +66,11 @@ def register_callbacks(app):
         options = []
         for l, value in tuple_list:
             options.append({'label': l, 'value': value})
-        names = values
-        label = ' '
-        for value in values:
-            label = dataset
-        return fig, label, start, options
+        # Save files
+        np.save('.cache/selected.npy', x_pool[query_indices])
+        df.ix[query_indices].to_pickle('.cache/selected.pkl')
+        df_pca.to_pickle('.cache/df_pca.pkl')
+        return fig, dataset, start, options
 
     @app.callback(
         Output('dummy', 'children'),
@@ -337,3 +280,39 @@ def numpy_to_b64(array, scalar=True):
     return im_b64
 
 
+def init_visualization(x):
+    pca = PCA(n_components=2, random_state=100)
+    principals_pca = pca.fit_transform(x)
+    np.save('.cache/pca.npy', principals_pca)
+    # tsne = TSNE(n_components=2, random_state=100, n_iter=300)
+    # principals_sne = tsne.fit_transform(x)
+    # np.save('.cache/sne.npy',principals_sne)
+    # umaps = umap.UMAP(n_components=2, random_state=100)
+    # principals_umap= umaps.fit_transform(x)
+    # np.save('.cache/umap.npy', principals_umap)
+
+
+def init_active_learner(x, y, batch_size):
+    query_indices = np.random.randint(low=0, high=x.shape[0] + 1, size=batch_size)
+    x_pool = np.delete(x, query_indices, axis=0)
+    y_pool = np.delete(y, query_indices, axis=0)
+
+    np.save('.cache/x.npy', x)
+    np.save('.cache/y.npy', y)
+    x_train = x[query_indices]
+    y_train = y[query_indices]
+
+    np.save('.cache/x_pool.npy', x_pool)
+    np.save('.cache/y_pool.npy', y_pool)
+    x_pool = x
+    # ML model
+    rf = RandomForestClassifier(n_jobs=-1, n_estimators=20, max_features=0.8)
+    # batch sampling
+    preset_batch = partial(uncertainty_batch_sampling, n_instances=batch_size)
+    # AL model
+    learner = ActiveLearner(estimator=rf,
+                            X_training=x_train,
+                            y_training=y_train.ravel(),
+                            query_strategy=preset_batch)
+    pickle.dump(learner, open(filename, 'wb'))
+    return query_indices, x_pool

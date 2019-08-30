@@ -86,12 +86,6 @@ app.layout = html.Div(
                 html.Div([
                     html.H5('Labels'),
                     html.Div(id='label', style={'display': 'none'}),
-                    # dcc.Input(id='query',
-                    #           placeholder='enter the label',
-                    #           type='text',
-                    #           debounce=True,
-                    #           disabled=True,
-                    #           value=''),
                     dcc.RadioItems(id='radio_label'),
                     html.Button('Submit query', id='submit'),
                 ], ),
