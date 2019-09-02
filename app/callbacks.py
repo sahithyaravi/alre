@@ -6,7 +6,8 @@ def register_callbacks(app):
     @app.callback([Output('scatter', 'figure'),
                    Output('label', 'children'),
                    Output('store', 'data'),
-                   Output('radio_label', 'options')],
+                   Output('radio_label', 'options'),
+                   Output('n_times', 'value'),],
                   [Input('next_round', 'n_clicks'),
                    Input('start', 'n_clicks')],
                   [State('select-dataset', 'value'),
@@ -27,6 +28,7 @@ def register_callbacks(app):
             x_pool = np.load('.cache/x_pool.npy')
             learner = pickle.load(open(filename, 'rb'))
             query_indices, query_instance, uncertainity = learner.query(x_pool)
+
 
         # Plot the query instances
         if dim == 'pca':
@@ -70,40 +72,48 @@ def register_callbacks(app):
         np.save('.cache/selected.npy', x_pool[query_indices])
         df.ix[query_indices].to_pickle('.cache/selected.pkl')
         df_pca.to_pickle('.cache/df_pca.pkl')
-        return fig, dataset, start, options
+        print("done update fig")
+        return fig, dataset, start, options, n_clicks
 
     @app.callback(
         Output('dummy', 'children'),
-        [Input('scatter', 'selectedData'),
-         Input('select-dataset', 'value')])
-    def enable_query(selectedData, dataset):
+        [Input('n_times', 'value'),
+         Input('submit', 'n_clicks'),],
+        [State('select-dataset', 'value')]
+        )
+    def enable_query(next_round, submit, dataset):
+        print(next_round, dataset)
         image = " "
-        if selectedData is not None:
-            y = np.load('.cache/y.npy')
-
-            if dataset == "mnist" and selectedData["points"][0]["curveNumber"] == 1:
-                try:
-                    index = selectedData["points"][0]["pointIndex"]
-                    image_vector = (np.load('.cache/selected.npy')[index])
-                    image_np = image_vector.reshape(8, 8).astype(np.float64)
-                    image_b64 = numpy_to_b64(image_np)
-                    image = html.Img(
-                        src="data:image/png;base64, " + image_b64,
-                        style={"display": "block", "height": "10vh", "margin": "auto"},
-                    )
-                except ValueError:
-                    pass
-            elif dataset == "davidson" and selectedData["points"][0]["curveNumber"] == 1:
-                try:
-                    index = selectedData["points"][0]["pointIndex"]
-                    selected = pd.read_pickle('.cache/selected.pkl').reset_index()
-                    image = html.Div(html.H6(selected.ix[index]['text']))
-                except ValueError:
-                    pass
-
+        if next_round is None or next_round == 0:
             return image
-        else:
-            return image
+        if dataset == "mnist":
+            try:
+                index = 0
+                image_vector = (np.load('.cache/selected.npy')[index])
+                image_np = image_vector.reshape(8, 8).astype(np.float64)
+                image_b64 = numpy_to_b64(image_np)
+                image = html.Img(
+                    src="data:image/png;base64, " + image_b64,
+                    style={"display": "block", "height": "10vh", "margin": "auto"},
+                )
+            except ValueError:
+                pass
+        elif dataset == "davidson":
+            print("davidson")
+            #try:
+            print("try")
+            index = 0
+            selected = pd.read_pickle('.cache/selected.pkl').reset_index()
+            print(selected.head())
+            image = html.Div(html.H6(selected.ix[index]['text']))
+            selected.drop(0, inplace=True)
+            print(selected)
+            selected.to_pickle('.cache/selected.pkl')
+            # except ValueError:
+            #     print("valueerror")
+            #     pass
+
+        return image
 
     @app.callback(
         [
@@ -117,6 +127,7 @@ def register_callbacks(app):
          State('hidden-div', 'children'),
          State('radio_label', 'value')])
     def get_selected_data(clickData, submit,  start, store, previous, radio_label):
+        print(clickData)
 
         if store is None:
             store = 0

@@ -92,6 +92,7 @@ app.layout = html.Div(
 
                 html.H4('Score after model fitting:'),
                 html.Div(id='score'),
+                html.Div(id='n_times',style={'display': 'none'} )
                 ]),
         ]),
         html.Div(id='selected-data'),
