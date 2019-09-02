@@ -59,7 +59,7 @@ app.layout = html.Div(
                     html.Div(dcc.Slider(id='query-batch-size', min=5, max=100, step=None,
                                         marks={
                                             i: str(i) for i in [5, 10, 50, 100]
-                                        }, value=5 ), style={"margin-bottom": "30px"}),
+                                        }, value=5), style={"margin-bottom": "30px"}),
                     html.P('Choose visualization technique',
                            style={'text-align': 'left', 'color': 'light-grey'}),
                     dcc.RadioItems(id='dim',

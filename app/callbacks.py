@@ -23,26 +23,15 @@ def register_callbacks(app):
         if n_clicks is None or n_clicks == 0 or start > storedata:
             n_clicks = 0
             query_indices, x_pool, y_pool = init_active_learner(x, y, batch_size)
-            init_visualization(x)
+
         else:
             x_pool = np.load('.cache/x_pool.npy')
             df = pd.read_pickle('.cache/df.pkl')
             learner = pickle.load(open(filename, 'rb'))
             query_indices, query_instance, uncertainity = learner.query(x_pool)
 
-            x_pool = np.delete(x, query_indices, axis=0)
-            y_pool = np.delete(y, query_indices, axis=0)
-
-            np.save('.cache/x_pool.npy', x_pool)
-            np.save('.cache/y_pool.npy', y_pool)
-
         # Plot the query instances
-        if dim == 'pca':
-            principals = np.load('.cache/pca.npy')
-        elif dim == "tsne":
-            principals = np.load('.cache/sne.npy')
-        else:
-            principals = np.load('.cache/umap.npy')
+        principals = visualize(x_pool, dim)
         df_pca = pd.DataFrame(principals, columns=['1', '2'])
         selected = principals[query_indices]
         if n_clicks > 0:
@@ -179,8 +168,8 @@ def register_callbacks(app):
         score = ''
         colorscale = 'Rainbow'
         if n_clicks is None and labels == dataset:
-            x = np.load('.cache/x.npy')
-            y = np.load('.cache/y.npy')
+            x = np.load('.cache/x_pool.npy')
+            y = np.load('.cache/y_pool.npy')
             learner = pickle.load(open(filename, 'rb'))
             predictions = learner.predict(x)
             is_correct = (predictions == y)
@@ -210,21 +199,15 @@ def register_callbacks(app):
                 if(literal_eval(previous)["clicks"]) == (batch_size*n_clicks):
                     x_pool = np.load('.cache/x_pool.npy')
                     y_pool = np.load('.cache/y_pool.npy')
-                    x = np.load('.cache/x.npy')
-                    y = np.load('.cache/y.npy')
+
                     learner = pickle.load(open(filename, 'rb'))
                     query_results = literal_eval(previous)['queries'][0:batch_size]
                     query_indices = list(range(0, batch_size))
                     learner.teach(x_pool[query_indices], query_results)
-                    # Remove query indices from unlabelled pool
-                    x_pool = np.delete(x_pool, query_indices, axis=0)
-                    y_pool = np.delete(y_pool, query_indices)
-
                     # Active learner supports numpy matrices, hence use .values
-
                     df_pca = pd.read_pickle('.cache/df_pca.pkl')
-                    predictions = learner.predict(x)
-                    is_correct = (predictions == y)
+                    predictions = learner.predict(x_pool)
+                    is_correct = (predictions == y_pool)
                     data_dec = [go.Scatter(x=df_pca['1'].values[is_correct],
                                            y=df_pca['2'].values[is_correct],
                                            mode='markers',
@@ -243,9 +226,12 @@ def register_callbacks(app):
                                                        opacity=0.7,
                                                        color=predictions[~is_correct]))]
                     layout = go.Layout(title='Output of classifier', showlegend=False)
+                    # Remove query indices from unlabelled pool
+                    x_pool = np.delete(x_pool, query_indices, axis=0)
+                    y_pool = np.delete(y_pool, query_indices)
                     np.save('.cache/x_pool.npy', x_pool)
                     np.save('.cache/y_pool.npy', y_pool)
-                    score = learner.score(x, y)
+                    score = learner.score(x_pool, y_pool)
                     score = ('Batch #' + str(n_clicks)+' Score: ' + str(round(score, 3)))
                     decision = go.Figure(data_dec, layout=layout)
         return decision, score
@@ -297,28 +283,26 @@ def numpy_to_b64(array, scalar=True):
     return im_b64
 
 
-def init_visualization(x):
-    pca = PCA(n_components=2, random_state=100)
-    principals_pca = pca.fit_transform(x)
-    np.save('.cache/pca.npy', principals_pca)
+def visualize(x_pool, dim):
+    if dim == "pca":
+        pca = PCA(n_components=2, random_state=100)
+        principals = pca.fit_transform(x_pool)
+
     # tsne = TSNE(n_components=2, random_state=100, n_iter=300)
     # principals_sne = tsne.fit_transform(x)
     # np.save('.cache/sne.npy',principals_sne)
     # umaps = umap.UMAP(n_components=2, random_state=100)
     # principals_umap= umaps.fit_transform(x)
     # np.save('.cache/umap.npy', principals_umap)
+    return principals
 
 
 def init_active_learner(x, y, batch_size):
     query_indices = np.random.randint(low=0, high=x.shape[0] + 1, size=batch_size)
-
-
     np.save('.cache/x.npy', x)
     np.save('.cache/y.npy', y)
     x_train = x[query_indices]
     y_train = y[query_indices]
-
-
 
     # ML model
     rf = RandomForestClassifier(n_jobs=-1, n_estimators=20, max_features=0.8)
