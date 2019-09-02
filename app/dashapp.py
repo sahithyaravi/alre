@@ -78,7 +78,7 @@ app.layout = html.Div(
                 dcc.Loading(dcc.Graph(id='decision'), fullscreen=True),
             ], style={"height": "100%"}),
             html.Div(className="two columns", children=[
-                html.Button('Next round', id='next_round', autoFocus=True,
+                html.Button('Fetch next batch', id='next_round', autoFocus=True,
                             style={'color': 'white', 'background-color': 'green'}),
                 html.H1(' '),
                 html.Div(id="dummy"),
@@ -87,7 +87,7 @@ app.layout = html.Div(
                     html.H5('Labels'),
                     html.Div(id='label', style={'display': 'none'}),
                     dcc.RadioItems(id='radio_label'),
-                    html.Button('Submit query', id='submit'),
+                    html.Button('Next', id='submit'),
                 ], ),
 
                 html.H4('Score after model fitting:'),

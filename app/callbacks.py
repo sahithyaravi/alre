@@ -99,19 +99,18 @@ def register_callbacks(app):
             except ValueError:
                 pass
         elif dataset == "davidson":
-            print("davidson")
-            #try:
-            print("try")
-            index = 0
-            selected = pd.read_pickle('.cache/selected.pkl').reset_index()
-            print(selected.head())
-            image = html.Div(html.H6(selected.ix[index]['text']))
-            selected.drop(0, inplace=True)
-            print(selected)
+            selected = pd.read_pickle('.cache/selected.pkl')
+            try:
+                index = 0
+                selected = selected.reset_index(drop=True)
+            except ValueError:
+                pass
+            if selected.empty:
+                image = ""
+            else:
+                image = html.Div(html.H6(selected.ix[index]['text']))
+                selected.drop(0, inplace=True)
             selected.to_pickle('.cache/selected.pkl')
-            # except ValueError:
-            #     print("valueerror")
-            #     pass
 
         return image
 
@@ -137,17 +136,17 @@ def register_callbacks(app):
         if previous is None or start > store:
             result_dict = dict()
             result_dict['clicks'] = 0
-            result_dict['points'] = []
+            #result_dict['points'] = []
             result_dict['queries'] = []
         else:
-            if clickData is not None and radio_label is not None and previous is not None:
+            if radio_label is not None and previous is not None:
                 if submit > literal_eval(previous)["clicks"]:
 
                     previous_list = json.loads(previous)
                     result_dict = previous_list
-                    points = previous_list['points'] + clickData['points']
+                    #points = previous_list['points'] + clickData['points']
                     queries = previous_list['queries']+[int(radio_label)]
-                    result_dict['points'] = points
+                    #result_dict['points'] = points
                     result_dict['clicks'] = submit
                     result_dict['queries'] = queries
                 else:
@@ -240,7 +239,7 @@ def register_callbacks(app):
                     np.save('.cache/x_pool.npy', x_pool)
                     np.save('.cache/y_pool.npy', y_pool)
                     score = learner.score(x, y)
-                    score = ('Query#' + str(n_clicks)+' ' + str(round(score, 3)))
+                    score = ('Batch #' + str(n_clicks)+' Score: ' + str(round(score, 3)))
                     decision = go.Figure(data_dec, layout=layout)
         return decision, score
 
