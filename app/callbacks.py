@@ -22,13 +22,19 @@ def register_callbacks(app):
             start = 0
         if n_clicks is None or n_clicks == 0 or start > storedata:
             n_clicks = 0
-            query_indices, x_pool = init_active_learner(x, y, batch_size)
+            query_indices, x_pool, y_pool = init_active_learner(x, y, batch_size)
             init_visualization(x)
         else:
             x_pool = np.load('.cache/x_pool.npy')
+            df = pd.read_pickle('.cache/df.pkl')
             learner = pickle.load(open(filename, 'rb'))
             query_indices, query_instance, uncertainity = learner.query(x_pool)
 
+            x_pool = np.delete(x, query_indices, axis=0)
+            y_pool = np.delete(y, query_indices, axis=0)
+
+            np.save('.cache/x_pool.npy', x_pool)
+            np.save('.cache/y_pool.npy', y_pool)
 
         # Plot the query instances
         if dim == 'pca':
@@ -71,8 +77,11 @@ def register_callbacks(app):
         # Save files
         np.save('.cache/selected.npy', x_pool[query_indices])
         df.ix[query_indices].to_pickle('.cache/selected.pkl')
+        df.drop(query_indices, inplace=True)
+        df = df.reset_index(drop=True)
+        df.to_pickle('.cache/df.pkl')
         df_pca.to_pickle('.cache/df_pca.pkl')
-        print("done update fig")
+
         return fig, dataset, start, options, n_clicks
 
     @app.callback(
@@ -82,7 +91,7 @@ def register_callbacks(app):
         [State('select-dataset', 'value')]
         )
     def enable_query(next_round, submit, dataset):
-        print(next_round, dataset)
+      #  print(next_round, dataset)
         image = " "
         if next_round is None or next_round == 0:
             return image
@@ -126,8 +135,6 @@ def register_callbacks(app):
          State('hidden-div', 'children'),
          State('radio_label', 'value')])
     def get_selected_data(clickData, submit,  start, store, previous, radio_label):
-        print(clickData)
-
         if store is None:
             store = 0
         if start is None:
@@ -304,17 +311,15 @@ def init_visualization(x):
 
 def init_active_learner(x, y, batch_size):
     query_indices = np.random.randint(low=0, high=x.shape[0] + 1, size=batch_size)
-    x_pool = np.delete(x, query_indices, axis=0)
-    y_pool = np.delete(y, query_indices, axis=0)
+
 
     np.save('.cache/x.npy', x)
     np.save('.cache/y.npy', y)
     x_train = x[query_indices]
     y_train = y[query_indices]
 
-    np.save('.cache/x_pool.npy', x_pool)
-    np.save('.cache/y_pool.npy', y_pool)
-    x_pool = x
+
+
     # ML model
     rf = RandomForestClassifier(n_jobs=-1, n_estimators=20, max_features=0.8)
     # batch sampling
@@ -325,4 +330,9 @@ def init_active_learner(x, y, batch_size):
                             y_training=y_train.ravel(),
                             query_strategy=preset_batch)
     pickle.dump(learner, open(filename, 'wb'))
-    return query_indices, x_pool
+    x_pool = np.delete(x, query_indices, axis=0)
+    y_pool = np.delete(y, query_indices, axis=0)
+
+    np.save('.cache/x_pool.npy', x_pool)
+    np.save('.cache/y_pool.npy', y_pool)
+    return query_indices, x_pool, y_pool
