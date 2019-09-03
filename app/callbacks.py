@@ -66,7 +66,7 @@ def register_callbacks(app):
             for l, value in tuple_list:
                 options.append({'label': l, 'value': value})
         # Save files
-        np.save('.cache/selected.npy', x_pool[query_indices])
+        np.save('.cache/selected.npy', selected)
         df.ix[query_indices].to_pickle('.cache/selected.pkl')
         df.drop(query_indices, inplace=True)
         df = df.reset_index(drop=True)
@@ -109,23 +109,24 @@ def register_callbacks(app):
             try:
                 index = 0
                 selected_df = selected_df.reset_index(drop=True)
+                selected = np.load('.cache/selected.npy')
+                print(selected)
             except ValueError:
                 pass
             if selected_df.empty:
                 image = ""
             else:
-                selected = np.load('.cache/selected.npy')
-                fig['data'].append(go.Scatter(x=selected[:, 0],
-                           y=selected[:, 1],
+
+                fig['data'].append(go.Scatter(x=[selected[0, 0]],
+                           y=[selected[0, 1]],
                            mode='markers',
                            name='current query',
                            marker=dict(color='mediumseagreen')))
-                np.delete(selected, 0)
-                "print saving selected"
-                np.save('.cache/selected.npy',selected)
+                selected = np.delete(selected, 0, axis=0)
                 image = html.Div(html.H6(selected_df.ix[index]['text']))
                 selected_df.drop(0, inplace=True)
             selected_df.to_pickle('.cache/selected.pkl')
+            np.save('.cache/selected.npy', selected)
 
         return image, fig
 
