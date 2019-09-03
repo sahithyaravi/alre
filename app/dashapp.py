@@ -19,7 +19,7 @@ app.layout = html.Div(
         html.Div(
             className="row background",
             id="demo-explanation",
-            style={"padding": "50px 45px"},
+            style={"padding": "10px"},
             children=[
                 html.Div(
                     id="description-text", children=html.H5("This is an active learning tool"
@@ -34,67 +34,70 @@ app.layout = html.Div(
             dcc.Store(id='store'),
             dcc.Store(id='querystore'),
             dcc.Store(id='store_dataset'),
-            html.Div(
-                className='two columns',
-                style={
-                    'display': 'inline-block',
-                    'overflow-y': 'hidden',
-                    'overflow-x': 'auto',
-                },
-                children=[
-                    html.P('Select a dataset', style={'text-align': 'left', 'color': 'light-grey'}),
-                    dcc.Dropdown(id='select-dataset',
-                                 options=[{'label': 'davidson', 'value': 'davidson'},
-                                          {'label': 'mnist-mini', 'value': 'mnist'},
-                                          {'label': 'iris', 'value': 'iris'},
-                                          {'label': 'breast-cancer', 'value': 'bc'},
-                                          {'label': 'wine', 'value': 'wine'}],
-                                 clearable=False,
-                                 searchable=False,
-                                 value='davidson'
-                                 ),
-                    html.P(' '),
-                    html.P('Choose batch size',
-                           style={'text-align': 'left', 'color': 'light-grey'}),
-                    html.Div(dcc.Slider(id='query-batch-size', min=5, max=100, step=None,
-                                        marks={
-                                            i: str(i) for i in [5, 10, 50, 100]
-                                        }, value=5), style={"margin-bottom": "30px"}),
-                    html.P('Choose visualization technique',
-                           style={'text-align': 'left', 'color': 'light-grey'}),
-                    dcc.RadioItems(id='dim',
-                                   options=[{'label': 'PCA', 'value': 'pca'},
-                                            {'label': 'T-SNE', 'value': 'tsne'},
-                                            {'label': 'UMAP', 'value': 'umap'}],
-                                   value='pca'
-                                   ),
-                    html.Button('Start', id='start'),
 
 
-
-                ]),
             html.Div(className="eight columns", children=[
-                dcc.Loading(dcc.Graph(id='scatter'), fullscreen=True),
-                dcc.Loading(dcc.Graph(id='decision'), fullscreen=True),
-            ], style={"height": "100%"}),
-            html.Div(className="two columns", children=[
+                html.Div(children=[
                 html.Button('Fetch next batch', id='next_round', autoFocus=True,
                             style={'color': 'white', 'background-color': 'green'}),
                 html.H1(' '),
                 html.Div(id="dummy"),
                 html.H1(' '),
                 html.Div([
-                    html.H5('Labels'),
                     html.Div(id='label', style={'display': 'none'}),
                     dcc.RadioItems(id='radio_label'),
                     html.Button('Next', id='submit'),
                 ], ),
 
-                html.H4('Score after model fitting:'),
+
+                html.Div(id='n_times', style={'display': 'none'})
+            ]),
+                dcc.Graph(id='scatter'),
+                dcc.Graph(id='scatter-hidden', style={'display': 'none'}),
                 html.Div(id='score'),
-                html.Div(id='n_times',style={'display': 'none'} )
-                ]),
+                dcc.Graph(id='decision'),
+            ], ),
+
+
+        html.Div(
+            className='three columns',
+            style={
+                'display': 'inline-block',
+                'overflow-y': 'hidden',
+                'overflow-x': 'hidden',
+            },
+            children=[
+                html.P('Select a dataset', style={'text-align': 'left', 'color': 'light-grey'}),
+                dcc.Dropdown(id='select-dataset',
+                             options=[{'label': 'davidson', 'value': 'davidson'},
+                                      {'label': 'mnist-mini', 'value': 'mnist'},
+                                      {'label': 'iris', 'value': 'iris'},
+                                      {'label': 'breast-cancer', 'value': 'bc'},
+                                      {'label': 'wine', 'value': 'wine'}],
+                             clearable=False,
+                             searchable=False,
+                             value='davidson'
+                             ),
+                html.P(' '),
+                html.P('Choose batch size',
+                       style={'text-align': 'left', 'color': 'light-grey'}),
+                html.Div(dcc.Slider(id='query-batch-size', min=5, max=100, step=None,
+                                    marks={
+                                        i: str(i) for i in [5, 10, 50, 100]
+                                    }, value=5), style={"margin-bottom": "30px"}),
+                html.P('Choose visualization technique',
+                       style={'text-align': 'left', 'color': 'light-grey'}),
+                dcc.RadioItems(id='dim',
+                               options=[{'label': 'PCA', 'value': 'pca'},
+                                        {'label': 'T-SNE', 'value': 'tsne'},
+                                        {'label': 'UMAP', 'value': 'umap'}],
+                               value='pca'
+                               ),
+                html.Button('Start', id='start'),
+
+            ]),
         ]),
+
         html.Div(id='selected-data'),
 
         dcc.Loading(html.Div(id='hidden-div', style={'display': 'none'}), fullscreen=True),

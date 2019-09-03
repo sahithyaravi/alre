@@ -3,7 +3,7 @@ from .all_imports import *
 
 
 def register_callbacks(app):
-    @app.callback([Output('scatter', 'figure'),
+    @app.callback([Output('scatter-hidden', 'figure'),
                    Output('label', 'children'),
                    Output('store', 'data'),
                    Output('radio_label', 'options'),
@@ -35,7 +35,7 @@ def register_callbacks(app):
         df_pca = pd.DataFrame(principals, columns=['1', '2'])
         selected = principals[query_indices]
         if n_clicks > 0:
-            name = 'query'+str(n_clicks)
+            name = 'Batch'+str(n_clicks)
         else:
             name = 'init random train set'
         data = [
@@ -47,8 +47,9 @@ def register_callbacks(app):
             go.Scatter(x=selected[:, 0],
                        y=selected[:, 1],
                        mode='markers',
-                       marker=dict(color='navy', size=15,
-                                   line=dict(color='navy', width=12)),
+                       marker=dict(color='royalblue'),
+                       # size=10,
+                       # line=dict(color='royalblue', width=10)),
                        name=name)]
         layout = go.Layout(
             paper_bgcolor='rgba(0,0,0,0)',
@@ -61,8 +62,9 @@ def register_callbacks(app):
         labels = df['target'].unique()
         tuple_list = zip(values, labels)
         options = []
-        for l, value in tuple_list:
-            options.append({'label': l, 'value': value})
+        if n_clicks > 0:
+            for l, value in tuple_list:
+                options.append({'label': l, 'value': value})
         # Save files
         np.save('.cache/selected.npy', x_pool[query_indices])
         df.ix[query_indices].to_pickle('.cache/selected.pkl')
@@ -74,16 +76,22 @@ def register_callbacks(app):
         return fig, dataset, start, options, n_clicks
 
     @app.callback(
-        Output('dummy', 'children'),
+        [Output('dummy', 'children'),
+         Output('scatter','figure')],
         [Input('n_times', 'value'),
-         Input('submit', 'n_clicks'),],
-        [State('select-dataset', 'value')]
+         Input('submit', 'n_clicks'),
+         ],
+        [State('select-dataset', 'value'),
+         State('scatter-hidden', 'figure')]
         )
-    def enable_query(next_round, submit, dataset):
+    def enable_query(next_round, submit, dataset, fig):
+        if fig is None:
+            fig = go.Figure()
+
       #  print(next_round, dataset)
         image = " "
         if next_round is None or next_round == 0:
-            return image
+            return image, fig
         if dataset == "mnist":
             try:
                 index = 0
@@ -97,20 +105,29 @@ def register_callbacks(app):
             except ValueError:
                 pass
         elif dataset == "davidson":
-            selected = pd.read_pickle('.cache/selected.pkl')
+            selected_df = pd.read_pickle('.cache/selected.pkl')
             try:
                 index = 0
-                selected = selected.reset_index(drop=True)
+                selected_df = selected_df.reset_index(drop=True)
             except ValueError:
                 pass
-            if selected.empty:
+            if selected_df.empty:
                 image = ""
             else:
-                image = html.Div(html.H6(selected.ix[index]['text']))
-                selected.drop(0, inplace=True)
-            selected.to_pickle('.cache/selected.pkl')
+                selected = np.load('.cache/selected.npy')
+                fig['data'].append(go.Scatter(x=selected[:, 0],
+                           y=selected[:, 1],
+                           mode='markers',
+                           name='current query',
+                           marker=dict(color='mediumseagreen')))
+                np.delete(selected, 0)
+                "print saving selected"
+                np.save('.cache/selected.npy',selected)
+                image = html.Div(html.H6(selected_df.ix[index]['text']))
+                selected_df.drop(0, inplace=True)
+            selected_df.to_pickle('.cache/selected.pkl')
 
-        return image
+        return image, fig
 
     @app.callback(
         [
@@ -232,7 +249,7 @@ def register_callbacks(app):
                     np.save('.cache/x_pool.npy', x_pool)
                     np.save('.cache/y_pool.npy', y_pool)
                     score = learner.score(x_pool, y_pool)
-                    score = ('Batch #' + str(n_clicks)+' Score: ' + str(round(score, 3)))
+                    score = html.H4('Batch #' + str(n_clicks)+' Score: ' + str(round(score, 3)))
                     decision = go.Figure(data_dec, layout=layout)
         return decision, score
 
