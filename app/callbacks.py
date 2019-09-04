@@ -59,6 +59,7 @@ def register_callbacks(app):
 
         # Labels
         values = np.unique(y)
+
         labels = df['target'].unique()
         tuple_list = zip(values, labels)
         options = []
@@ -110,7 +111,6 @@ def register_callbacks(app):
                 index = 0
                 selected_df = selected_df.reset_index(drop=True)
                 selected = np.load('.cache/selected.npy')
-                print(selected)
             except ValueError:
                 pass
             if selected_df.empty:
@@ -272,6 +272,7 @@ def get_dataset(dataset):
                                stop_words=stopwords.words('english'))
         x = tfid.fit_transform(x).toarray()
         df['target'] = df['label']
+        print(df['target'].value_counts())
         df.drop('text', axis=1)
 
     else:
@@ -305,13 +306,12 @@ def visualize(x_pool, dim):
     if dim == "pca":
         pca = PCA(n_components=2, random_state=100)
         principals = pca.fit_transform(x_pool)
-
-    # tsne = TSNE(n_components=2, random_state=100, n_iter=300)
-    # principals_sne = tsne.fit_transform(x)
-    # np.save('.cache/sne.npy',principals_sne)
-    # umaps = umap.UMAP(n_components=2, random_state=100)
-    # principals_umap= umaps.fit_transform(x)
-    # np.save('.cache/umap.npy', principals_umap)
+    elif dim == "tsne":
+        tsne = TSNE(n_components=2, random_state=100, n_iter=300)
+        principals = tsne.fit_transform(x_pool)
+    else:
+        umaps = umap.UMAP(n_components=2, random_state=100)
+        principals= umaps.fit_transform(x_pool)
     return principals
 
 
@@ -323,7 +323,9 @@ def init_active_learner(x, y, batch_size):
     y_train = y[query_indices]
 
     # ML model
-    rf = RandomForestClassifier(n_jobs=-1, n_estimators=20, max_features=0.8)
+    rf = RandomForestClassifier(n_jobs=-1, n_estimators=20, min_samples_leaf=2,
+                                class_weight={0: 1, 1: 2}
+                                )
     # batch sampling
     preset_batch = partial(uncertainty_batch_sampling, n_instances=batch_size)
     # AL model
