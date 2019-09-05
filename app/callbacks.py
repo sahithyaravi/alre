@@ -23,12 +23,17 @@ def register_callbacks(app):
         if n_clicks is None or n_clicks == 0 or start > storedata:
             n_clicks = 0
             query_indices, x_pool, y_pool = init_active_learner(x, y, batch_size)
+            uncertainity = []
 
         else:
             x_pool = np.load('.cache/x_pool.npy')
             df = pd.read_pickle('.cache/df.pkl')
             learner = pickle.load(open(filename, 'rb'))
             query_indices, query_instance, uncertainity = learner.query(x_pool)
+            print(uncertainity)
+            uncertainity = uncertainity[query_indices]
+            print(uncertainity)
+
 
         # Plot the query instances
         principals = visualize(x_pool, dim)
@@ -50,7 +55,13 @@ def register_callbacks(app):
                        marker=dict(color='royalblue'),
                        # size=10,
                        # line=dict(color='royalblue', width=10)),
-                       name=name)]
+                       name=name),
+            go.Heatmap(x=selected[:, 0],
+                       y=selected[:, 1],
+                       z=uncertainity,
+                      # zsmooth='fast',
+                       showscale=False),
+        ]
         layout = go.Layout(
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
@@ -88,46 +99,44 @@ def register_callbacks(app):
     def enable_query(next_round, submit, dataset, fig):
         if fig is None:
             fig = go.Figure()
-
-      #  print(next_round, dataset)
         image = " "
         if next_round is None or next_round == 0:
             return image, fig
-        if dataset == "mnist":
-            try:
-                index = 0
-                image_vector = (np.load('.cache/selected.npy')[index])
+        try:
+            index = 0
+            selected_df = pd.read_pickle('.cache/selected.pkl')
+            selected = np.load('.cache/selected.npy')
+        except ValueError:
+            pass
+        if not selected_df.empty:
+            if dataset == "mnist":
+                selected_df = selected_df.reset_index(drop=True)
+                if 'target' in selected_df.columns:
+                    selected_df.drop('target', inplace=True, axis=1)
+                image_vector = selected_df.to_numpy()[index]
                 image_np = image_vector.reshape(8, 8).astype(np.float64)
+                print(image_np)
                 image_b64 = numpy_to_b64(image_np)
                 image = html.Img(
                     src="data:image/png;base64, " + image_b64,
                     style={"display": "block", "height": "10vh", "margin": "auto"},
                 )
-            except ValueError:
-                pass
-        elif dataset == "davidson":
-            selected_df = pd.read_pickle('.cache/selected.pkl')
-            try:
+
+            elif dataset == "davidson":
                 index = 0
                 selected_df = selected_df.reset_index(drop=True)
-                selected = np.load('.cache/selected.npy')
-            except ValueError:
-                pass
-            if selected_df.empty:
-                image = ""
-            else:
+                image = html.Div(html.H6(selected_df.ix[index]['text']))
 
-                fig['data'].append(go.Scatter(x=[selected[0, 0]],
+            fig['data'].append(go.Scatter(x=[selected[0, 0]],
                            y=[selected[0, 1]],
                            mode='markers',
                            name='current query',
                            marker=dict(color='mediumseagreen')))
-                selected = np.delete(selected, 0, axis=0)
-                image = html.Div(html.H6(selected_df.ix[index]['text']))
-                selected_df.drop(0, inplace=True)
+            selected = np.delete(selected, 0, axis=0)
+
+            selected_df.drop(0, inplace=True, axis=0)
             selected_df.to_pickle('.cache/selected.pkl')
             np.save('.cache/selected.npy', selected)
-
         return image, fig
 
     @app.callback(
@@ -303,11 +312,12 @@ def numpy_to_b64(array, scalar=True):
 
 
 def visualize(x_pool, dim):
+    print(x_pool.shape)
     if dim == "pca":
         pca = PCA(n_components=2, random_state=100)
         principals = pca.fit_transform(x_pool)
     elif dim == "tsne":
-        tsne = TSNE(n_components=2, random_state=100, n_iter=300)
+        tsne = TSNE(n_components=2, random_state=100, n_jobs=4)
         principals = tsne.fit_transform(x_pool)
     else:
         umaps = umap.UMAP(n_components=2, random_state=100)
@@ -323,9 +333,12 @@ def init_active_learner(x, y, batch_size):
     y_train = y[query_indices]
 
     # ML model
-    rf = RandomForestClassifier(n_jobs=-1, n_estimators=20, min_samples_leaf=2,
-                                class_weight={0: 1, 1: 2}
-                                )
+    # rf = RandomForestClassifier(n_jobs=-1, n_estimators=20,
+    #                             max_features=0.7,
+    #                             oob_score=True
+    #                            # class_weight={0: 1, 1: 2}
+    #                             )
+    rf = KNeighborsClassifier(n_neighbors=5, n_jobs=4)
     # batch sampling
     preset_batch = partial(uncertainty_batch_sampling, n_instances=batch_size)
     # AL model

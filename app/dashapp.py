@@ -4,6 +4,8 @@ import dash_core_components as dcc
 from app.callbacks import register_callbacks
 import os
 import shutil
+import plotly.io as pio
+pio.renderers.default = 'iframe'
 app = dash.Dash(__name__, url_base_pathname='/dashboard/')
 app.config.suppress_callback_exceptions = True
 register_callbacks(app)
@@ -76,7 +78,7 @@ app.layout = html.Div(
                                       {'label': 'wine', 'value': 'wine'}],
                              clearable=False,
                              searchable=False,
-                             value='davidson'
+                             value= 'davidson'
                              ),
                 html.P(' '),
                 html.P('Choose batch size',
@@ -91,7 +93,7 @@ app.layout = html.Div(
                                options=[{'label': 'PCA', 'value': 'pca'},
                                         {'label': 'T-SNE', 'value': 'tsne'},
                                         {'label': 'UMAP', 'value': 'umap'}],
-                               value='tsne'
+                               value='pca'
                                ),
                 html.Button('Start', id='start'),
 
