@@ -122,7 +122,7 @@ def register_callbacks(app):
                     style={"display": "block", "height": "10vh", "margin": "auto"},
                 )
 
-            elif dataset == "davidson":
+            else:
                 index = 0
                 selected_df = selected_df.reset_index(drop=True)
                 image = html.Div(html.H6(selected_df.ix[index]['text']))
@@ -272,8 +272,9 @@ def get_dataset(dataset):
         x = raw_data['data']
         y = raw_data['target'].astype(np.uint8)
 
-    elif dataset == "davidson":
-        df = pd.read_csv('datasets/davidson_dataset.csv')
+    else:
+        df = pd.read_csv('datasets/'+dataset+".csv")
+        df.dropna(axis=0, inplace=True)
         x = df['text'].values
         y = df['label'].values
         nltk.download('stopwords')
@@ -284,17 +285,17 @@ def get_dataset(dataset):
         print(df['target'].value_counts())
         df.drop('text', axis=1)
 
-    else:
-        if dataset == 'bc':
-            raw_data = load_breast_cancer()
-        elif dataset == 'iris':
-            raw_data = load_iris()
-        elif dataset == "wine":
-            raw_data = load_wine()
-        df = pd.DataFrame(data=np.c_[raw_data['data'], raw_data['target']],
-                          columns=list(raw_data['feature_names']) + ['target'])
-        x = raw_data['data']
-        y = raw_data['target'].astype(np.uint8)
+    # else: Support only image and text for now
+    #     if dataset == 'bc':
+    #         raw_data = load_breast_cancer()
+    #     elif dataset == 'iris':
+    #         raw_data = load_iris()
+    #     elif dataset == "wine":
+    #         raw_data = load_wine()
+    #     df = pd.DataFrame(data=np.c_[raw_data['data'], raw_data['target']],
+    #                       columns=list(raw_data['feature_names']) + ['target'])
+    #     x = raw_data['data']
+    #     y = raw_data['target'].astype(np.uint8)
     #print(df.head())
     return df, x, y
 

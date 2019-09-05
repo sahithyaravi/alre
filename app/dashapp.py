@@ -57,7 +57,7 @@ app.layout = html.Div(
                 dcc.Graph(id='scatter'),
                 dcc.Graph(id='scatter-hidden', style={'display': 'none'}),
                 html.Div(id='score'),
-                dcc.Graph(id='decision'),
+                dcc.Loading(dcc.Graph(id='decision')),
             ], ),
 
 
@@ -71,14 +71,20 @@ app.layout = html.Div(
             children=[
                 html.P('Select a dataset', style={'text-align': 'left', 'color': 'light-grey'}),
                 dcc.Dropdown(id='select-dataset',
-                             options=[{'label': 'davidson', 'value': 'davidson'},
+                             options=[{'label': 'davidson', 'value': 'davidson_dataset'},
+                                      {'label': 'founta', 'value': 'founta_dataset'},
+                                      {'label': 'gao', 'value': 'gao_dataset'},
+                                      {'label': 'golbeck', 'value': 'golbeck_dataset'},
+                                      {'label': 'waseem', 'value': 'waseem_dataset'},
                                       {'label': 'mnist-mini', 'value': 'mnist'},
-                                      {'label': 'iris', 'value': 'iris'},
-                                      {'label': 'breast-cancer', 'value': 'bc'},
-                                      {'label': 'wine', 'value': 'wine'}],
+                                      # support only text and image for now
+                                      # {'label': 'iris', 'value': 'iris'},
+                                      # {'label': 'breast-cancer', 'value': 'bc'},
+                                      # {'label': 'wine', 'value': 'wine'}
+                                      ],
                              clearable=False,
                              searchable=False,
-                             value= 'davidson'
+                             value='davidson_dataset'
                              ),
                 html.P(' '),
                 html.P('Choose batch size',
