@@ -195,8 +195,8 @@ def register_callbacks(app):
         score = ''
         colorscale = 'Rainbow'
         if n_clicks is None and labels == dataset:
-            x = np.load('.cache/x_pool.npy')
-            y = np.load('.cache/y_pool.npy')
+            x = np.load('.cache/x.npy')
+            y = np.load('.cache/y.npy')
             learner = pickle.load(open(filename, 'rb'))
             predictions = learner.predict(x)
             is_correct = (predictions == y)
@@ -327,7 +327,9 @@ def visualize(x_pool, dim):
 
 
 def init_active_learner(x, y, batch_size):
-    query_indices = np.random.randint(low=0, high=x.shape[0] + 1, size=batch_size)
+
+    query_indices = np.random.randint(low=0, high=x.shape[0], size=round(0.1*x.shape[0]))
+    print(query_indices)
     np.save('.cache/x.npy', x)
     np.save('.cache/y.npy', y)
     x_train = x[query_indices]
@@ -353,4 +355,4 @@ def init_active_learner(x, y, batch_size):
 
     np.save('.cache/x_pool.npy', x_pool)
     np.save('.cache/y_pool.npy', y_pool)
-    return query_indices, x_pool, y_pool
+    return query_indices, x, y
