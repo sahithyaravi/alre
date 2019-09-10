@@ -36,6 +36,7 @@ app.layout = html.Div(
             dcc.Store(id='store'),
             dcc.Store(id='querystore'),
             dcc.Store(id='store_dataset'),
+            dcc.Store(id='start_timer'),
 
 
             html.Div(className="eight columns", children=[
@@ -43,7 +44,7 @@ app.layout = html.Div(
                 html.Button('Fetch next batch', id='next_round', autoFocus=True,
                             style={'color': 'white', 'background-color': 'green'}),
                 html.H1(' '),
-                html.Div(id="dummy"),
+                html.Div(id="query_data"),
                 html.H1(' '),
                 html.Div([
                     html.Div(id='label', style={'display': 'none'}),
@@ -54,7 +55,7 @@ app.layout = html.Div(
 
                 html.Div(id='n_times', style={'display': 'none'})
             ]),
-                dcc.Graph(id='scatter'),
+                dcc.Loading(dcc.Graph(id='scatter')),
                 dcc.Graph(id='scatter-hidden', style={'display': 'none'}),
                 html.Div(id='score'),
                 dcc.Loading(dcc.Graph(id='decision')),

@@ -26,6 +26,7 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 import nltk
 from nltk.corpus import stopwords
 import time
+import sklearn.metrics
 filename = '.cache/finalized_model.sav'
 cmap_light = [[1, "rgb(165,0,38)"],
               [0.5, "rgb(165,0,38)"],
