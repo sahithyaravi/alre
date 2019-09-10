@@ -9,11 +9,13 @@ import numpy as np
 import plotly.graph_objs as go
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import LinearSVC, SVC
 from functools import partial
 from modAL.batch import uncertainty_batch_sampling
 from modAL.models import ActiveLearner
 import dash_core_components as dcc
 import pandas as pd
+from sklearn.calibration import CalibratedClassifierCV
 import pickle
 import json
 from ast import literal_eval

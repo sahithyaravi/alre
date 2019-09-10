@@ -321,7 +321,7 @@ def get_dataset(dataset):
         y = raw_data['target'].astype(np.uint8)
 
     else:
-        df = pd.read_csv('datasets/'+dataset+".csv")
+        df = pd.read_pickle('datasets/'+dataset+".pkl")
         df.dropna(axis=0, inplace=True)
         x = df['text'].values
         y = df['label'].values
@@ -388,7 +388,10 @@ def init_active_learner(x, y, batch_size):
     #                             oob_score=True
     #                            # class_weight={0: 1, 1: 2}
     #                             )
-    rf = KNeighborsClassifier(n_neighbors=5, n_jobs=4)
+    #rf = KNeighborsClassifier(n_neighbors=5, n_jobs=4)
+    svm = LinearSVC()
+    rf = CalibratedClassifierCV(svm)
+
     # batch sampling
     preset_batch = partial(uncertainty_batch_sampling, n_instances=batch_size)
     # AL model
