@@ -1,6 +1,6 @@
 
 from .all_imports import *
-
+from .select_batch_k_means import *
 
 def register_callbacks(app):
     @app.callback([Output('scatter-hidden', 'figure'),
@@ -389,13 +389,13 @@ def init_active_learner(x, y, batch_size):
     #                            # class_weight={0: 1, 1: 2}
     #                             )
     #rf = KNeighborsClassifier(n_neighbors=5, n_jobs=4)
-    svm = LinearSVC()
-    rf = CalibratedClassifierCV(svm)
+    estimator = SVC(kernel='linear', probability=True, gamma='auto')
+
 
     # batch sampling
-    preset_batch = partial(uncertainty_batch_sampling, n_instances=batch_size)
+    preset_batch = partial(random_sampling, n_instances=batch_size)
     # AL model
-    learner = ActiveLearner(estimator=rf,
+    learner = ActiveLearner(estimator=estimator,
                             X_training=x_train,
                             y_training=y_train.ravel(),
                             query_strategy=preset_batch)
