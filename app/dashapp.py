@@ -95,12 +95,14 @@ app.layout = html.Div(
                                         i: str(i) for i in [5, 10, 50, 100]
                                     }, value=10), style={"margin-bottom": "30px"}),
                 html.P('Choose visualization technique',
-                       style={'text-align': 'left', 'color': 'light-grey'}),
+                       style={'text-align': 'left', 'color': 'light-grey',
+                              "display":"none"}),
                 dcc.RadioItems(id='dim',
                                options=[{'label': 'PCA', 'value': 'pca'},
                                         {'label': 'T-SNE', 'value': 'tsne'},
                                         {'label': 'UMAP', 'value': 'umap'}],
-                               value='pca'
+                               value='pca',
+                               style={"display": "none"}
                                ),
                 html.Button('Start', id='start'),
 

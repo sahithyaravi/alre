@@ -7,6 +7,7 @@ import base64
 import PIL.ImageOps
 import numpy as np
 import plotly.graph_objs as go
+import plotly.offline
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import LinearSVC, SVC

@@ -31,11 +31,8 @@ def register_callbacks(app):
             x_pool = np.load('.cache/x_pool.npy')
             df = pd.read_pickle('.cache/df.pkl')
             learner = pickle.load(open(filename, 'rb'))
-            query_indices, query_instance, uncertainity = learner.query(x_pool)
-            print(uncertainity)
+            query_indices, query_instance, uncertainity, cluster = learner.query(x_pool)
             uncertainity = uncertainity[query_indices]
-            print(uncertainity)
-
 
         # Plot the query instances
         principals = visualize(x_pool, dim)
