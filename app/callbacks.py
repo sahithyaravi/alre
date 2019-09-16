@@ -33,7 +33,8 @@ def register_callbacks(app):
             df = pd.read_pickle('.cache/df.pkl')
             learner = pickle.load(open(filename, 'rb'))
             query_indices, query_instance, uncertainity, labels_, indices = learner.query(x_pool)
-            fig = plot_cluster(x_pool, query_indices, indices, uncertainity, labels_)
+
+            cluster_fig = plot_cluster(x_pool, query_indices, indices, uncertainity, labels_)
             uncertainity = uncertainity[query_indices]
 
         # Plot the query instances
@@ -68,8 +69,8 @@ def register_callbacks(app):
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             clickmode='event+select')
-        if n_clicks is None or n_clicks == 0 or start > storedata:
-            fig = go.Figure(data, layout)
+        #if n_clicks is None or n_clicks == 0 or start > storedata:
+        fig = go.Figure(data, layout)
 
         # Labels
         values = np.unique(y)

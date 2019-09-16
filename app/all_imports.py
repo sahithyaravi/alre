@@ -52,7 +52,7 @@ def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
     principals_pool = pca.fit_transform(x_pool)
     principals = principals_pool[indices]
     principals_rest = np.delete(principals_pool, indices, axis=0)
-    heatmap_indices = np.random.randint(low=0, high=x_pool.shape[0], size=250)
+    heatmap_indices = np.random.randint(low=0, high=x_pool.shape[0], size=100)
 
     np.append(heatmap_indices, batch_indices)
 
@@ -62,6 +62,7 @@ def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
                                    name='unlabelled pool',
                                    showlegend=False,
                                    marker=dict(color='grey',
+                                               opacity=0,
                                                size=5)
 
                                    ))
@@ -82,35 +83,38 @@ def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
         cluster_data.append(go.Scattergl(x=[principals_pool[center_index, 0]],
                                        y=[principals_pool[center_index, 1]],
                                        mode='markers',
-                                       showlegend=False,
+                                       showlegend=True,
                                        marker=dict(color=color[cluster_id],
                                                    size=15,
                                                    line=dict(color='black', width=5)),
                                        name='centroid cluster ' + str(cluster_id)
 
                                        ))
-    # cluster_data.append(go.Contour(x=principals_pool[heatmap_indices][:, 0],
-    #                                y=principals_pool[heatmap_indices][:, 1],
-    #                                z=entropy[heatmap_indices],
-    #                                name='uncertainity map',
-    #                                connectgaps=True,
-    #                                showscale=False,
-    #                                colorscale='Jet',
-    #                                contours=dict(coloring="fill",
-    #                                              showlines=False
-    #                                              )
-    #                                ))
-    cluster_data.append(go.Heatmap(x=principals_pool[heatmap_indices][:, 0],
+    cluster_data.append(go.Contour(x=principals_pool[heatmap_indices][:, 0],
                                    y=principals_pool[heatmap_indices][:, 1],
                                    z=entropy[heatmap_indices],
+                                   name='uncertainity map',
+                                   showlegend=True,
                                    connectgaps=True,
                                    showscale=False,
-                                   colorscale='Jet',
-                                   zsmooth='best'
-
+                                   colorscale='Hot',
+                                   contours=dict(coloring="heatmap",
+                                                 showlines=False
+                                                 )
                                    ))
+    # cluster_data.append(go.Heatmap(x=principals_pool[heatmap_indices][:, 0],
+    #                                y=principals_pool[heatmap_indices][:, 1],
+    #                                z=entropy[heatmap_indices],
+    #                                connectgaps=True,
+    #
+    #                                showscale=False,
+    #                                name='Heatmap',
+    #                                colorscale='Viridis',
+    #                                zsmooth='best'
+    #
+    #                                ))
 
     fig = go.Figure(data=cluster_data)
 
-    #plotly.offline.plot(fig, filename="clustering.html")
+    plotly.offline.plot(fig, filename="clustering.html")
     return fig
