@@ -69,15 +69,17 @@ def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
         cluster_indices = np.where(labels_ == cluster_id)
         center_index = batch_indices[cluster_id]
         cluster_principals = principals[cluster_indices]
-        # print("cluster" , cluster_id, cluster_principals)
-        cluster_data.append(go.Scatter(x=cluster_principals[:, 0],
+        # print("cluster" , cluster_id, cluster_principals
+        # )
+
+        cluster_data.append(go.Scattergl(x=cluster_principals[:, 0],
                                        y=cluster_principals[:, 1],
                                        mode='markers',
                                        marker=dict(color=color[cluster_id],
                                                    size=10),
                                        name='cluster ' + str(cluster_id),
                                        ))
-        cluster_data.append(go.Scatter(x=[principals_pool[center_index, 0]],
+        cluster_data.append(go.Scattergl(x=[principals_pool[center_index, 0]],
                                        y=[principals_pool[center_index, 1]],
                                        mode='markers',
                                        showlegend=False,

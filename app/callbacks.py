@@ -46,12 +46,12 @@ def register_callbacks(app):
         else:
             name = 'init random train set'
         data = [
-            go.Scatter(x=df_pca['1'],
+            go.Scattergl(x=df_pca['1'],
                        y=df_pca['2'],
                        mode='markers',
                        marker=dict(color='lightblue'),
                        name='unlabeled data'),
-            go.Scatter(x=selected[:, 0],
+            go.Scattergl(x=selected[:, 0],
                        y=selected[:, 1],
                        mode='markers',
                        marker=dict(color='royalblue'),
@@ -132,7 +132,7 @@ def register_callbacks(app):
                 selected_df = selected_df.reset_index(drop=True)
                 image = html.Div(html.H6(selected_df.ix[index]['text']))
 
-            fig['data'].append(go.Scatter(x=[selected[0, 0]],
+            fig['data'].append(go.Scattergl(x=[selected[0, 0]],
                            y=[selected[0, 1]],
                            mode='markers',
                            name='current query',
