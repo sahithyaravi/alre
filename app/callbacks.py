@@ -31,7 +31,8 @@ def register_callbacks(app):
             x_pool = np.load('.cache/x_pool.npy')
             df = pd.read_pickle('.cache/df.pkl')
             learner = pickle.load(open(filename, 'rb'))
-            query_indices, query_instance, uncertainity, cluster = learner.query(x_pool)
+            query_indices, query_instance, uncertainity, labels_, indices = learner.query(x_pool)
+            plot_cluster(x_pool, query_indices, indices, uncertainity, labels_)
             uncertainity = uncertainity[query_indices]
 
         # Plot the query instances
@@ -390,7 +391,7 @@ def init_active_learner(x, y, batch_size):
 
 
     # batch sampling
-    preset_batch = partial(random_sampling, n_instances=batch_size)
+    preset_batch = partial(batch_kmeans, n_instances=batch_size)
     # AL model
     learner = ActiveLearner(estimator=estimator,
                             X_training=x_train,
