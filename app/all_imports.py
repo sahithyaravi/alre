@@ -52,15 +52,15 @@ def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
     principals_pool = pca.fit_transform(x_pool)
     principals = principals_pool[indices]
     principals_rest = np.delete(principals_pool, indices, axis=0)
-    heatmap_indices = np.random.randint(low=0, high=x_pool.shape[0], size=100)
+    heatmap_indices = np.random.randint(low=0, high=x_pool.shape[0], size=250)
 
     np.append(heatmap_indices, batch_indices)
-
 
     cluster_data.append(go.Scatter(x=principals_rest[:, 0],
                                    y=principals_rest[:, 1],
                                    mode='markers',
                                    name='unlabelled pool',
+                                   showlegend=False,
                                    marker=dict(color='grey',
                                                size=5)
 
@@ -80,10 +80,11 @@ def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
         cluster_data.append(go.Scatter(x=[principals_pool[center_index, 0]],
                                        y=[principals_pool[center_index, 1]],
                                        mode='markers',
+                                       showlegend=False,
                                        marker=dict(color=color[cluster_id],
-                                                   size=10,
-
+                                                   size=15,
                                                    line=dict(color='black', width=5)),
+                                       name='centroid cluster ' + str(cluster_id)
 
                                        ))
     # cluster_data.append(go.Contour(x=principals_pool[heatmap_indices][:, 0],
@@ -109,5 +110,5 @@ def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
 
     fig = go.Figure(data=cluster_data)
 
-    plotly.offline.plot(fig, filename="clustering")
+    #plotly.offline.plot(fig, filename="clustering.html")
     return fig

@@ -1,6 +1,6 @@
-
 from .all_imports import *
 from .select_batch_k_means import *
+
 
 def register_callbacks(app):
     @app.callback([Output('scatter-hidden', 'figure'),
@@ -16,6 +16,7 @@ def register_callbacks(app):
                    State('dim', 'value'),
                    State('store', 'data')])
     def update_scatter_plot(n_clicks, start, dataset, batch_size, dim, storedata):
+        print("entered update_scatter_plot")
         start_timer = 0
         df, x, y = get_dataset(dataset)
         if storedata is None:
@@ -32,7 +33,7 @@ def register_callbacks(app):
             df = pd.read_pickle('.cache/df.pkl')
             learner = pickle.load(open(filename, 'rb'))
             query_indices, query_instance, uncertainity, labels_, indices = learner.query(x_pool)
-            plot_cluster(x_pool, query_indices, indices, uncertainity, labels_)
+            fig = plot_cluster(x_pool, query_indices, indices, uncertainity, labels_)
             uncertainity = uncertainity[query_indices]
 
         # Plot the query instances
@@ -67,7 +68,8 @@ def register_callbacks(app):
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             clickmode='event+select')
-        fig = go.Figure(data, layout)
+        if n_clicks is None or n_clicks == 0 or start > storedata:
+            fig = go.Figure(data, layout)
 
         # Labels
         values = np.unique(y)
@@ -98,6 +100,8 @@ def register_callbacks(app):
          State('scatter-hidden', 'figure')]
         )
     def enable_query(next_round, submit, dataset, fig):
+        print("entered enable_query")
+        start = time.time()
         if fig is None:
             fig = go.Figure()
         image = " "
@@ -132,12 +136,14 @@ def register_callbacks(app):
                            y=[selected[0, 1]],
                            mode='markers',
                            name='current query',
-                           marker=dict(color='mediumseagreen')))
+                           marker=dict(symbol='star', color='rgba(0, 0, 0,1)')))
             selected = np.delete(selected, 0, axis=0)
 
             selected_df.drop(0, inplace=True, axis=0)
             selected_df.to_pickle('.cache/selected.pkl')
             np.save('.cache/selected.npy', selected)
+        end = time.time()
+        print(end-start)
         return image, fig
 
     @app.callback(
@@ -387,7 +393,10 @@ def init_active_learner(x, y, batch_size):
     #                            # class_weight={0: 1, 1: 2}
     #                             )
     #rf = KNeighborsClassifier(n_neighbors=5, n_jobs=4)
-    estimator = SVC(kernel='linear', probability=True, gamma='auto')
+    svm = LinearSVC()
+    estimator = CalibratedClassifierCV(svm)
+
+    #SVC(kernel='linear', probability=True, gamma='auto')
 
 
     # batch sampling

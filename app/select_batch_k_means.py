@@ -9,17 +9,13 @@ def batch_kmeans(classfier, x_pool, n_instances):
     n_clusters = 10
     # Get entropy using predict_proba from classifier
     entropy = classifier_entropy(classfier, x_pool)
-    print("entropy min ", min(entropy))
-    print("entropy max ", max(entropy))
-
     # select top 10% of entropy high instances
     # use it as input to k means
     n_cluster_inputs = round(0.1 * x_pool.shape[0])
     indices = (-entropy).argsort()[:n_cluster_inputs]
     min_indices = entropy.argsort()[:n_cluster_inputs]
     cluster_inputs = x_pool[indices]
-
-    kmeans = KMeans(n_clusters=n_clusters, random_state=0, max_iter=600, n_init=10)
+    kmeans = KMeans(n_clusters=n_clusters, random_state=0, max_iter=600, init='k-means++')
     distances = []  # distance to the closest centroid
     kmeans.fit(cluster_inputs)
     if selection_strategy == "k-means-closest":

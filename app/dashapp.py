@@ -5,9 +5,11 @@ from app.callbacks import register_callbacks
 import os
 import shutil
 import plotly.io as pio
-pio.renderers.default = 'iframe'
+
 app = dash.Dash(__name__, url_base_pathname='/dashboard/')
 app.config.suppress_callback_exceptions = True
+app.css.config.serve_locally = True
+app.scripts.config.serve_locally = True
 register_callbacks(app)
 
 # Layout of the app
