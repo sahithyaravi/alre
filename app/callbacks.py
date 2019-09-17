@@ -44,6 +44,7 @@ def register_callbacks(app):
         print("entered update_scatter_plot")
         start_timer = 0
         df, x, y = get_dataset(dataset)
+        # Original data x and y
         np.save('.cache/x.npy', x)
         np.save('.cache/y.npy', y)
         if storedata is None:
@@ -51,25 +52,24 @@ def register_callbacks(app):
         if start is None:
             start = 0
         if n_clicks is None or n_clicks == 0 or start > storedata:
+            visible = False
             n_clicks = 0
             query_indices, x_pool, y_pool = init_active_learner(x, y, batch_size)
             uncertainity = np.empty(x_pool.shape)
 
         else:
+            visible = 'legendonly'
             x_pool = np.load('.cache/x_pool.npy')
             df = pd.read_pickle('.cache/df.pkl')
             learner = pickle.load(open(filename, 'rb'))
-            query_indices, query_instance, uncertainity, labels_, indices = learner.query(x_pool)
-
-            cluster_fig = plot_cluster(x_pool, query_indices, indices, uncertainity, labels_)
-
+            query_indices, query_instance, uncertainity = learner.query(x_pool)
 
         # Plot the query instances
         principals = visualize(x_pool, dim)
         df_pca = pd.DataFrame(principals, columns=['1', '2'])
         selected = principals[query_indices]
         heatmap_indices = np.random.randint(low=0, high=x_pool.shape[0], size=100)
-        colorscale = [[0, 'gold'], [0.5, 'mediumturquoise'], [1, 'lightsalmon']]
+        colorscale = [[0, 'mediumturquoise'], [1, 'lightsalmon']]
         np.append(heatmap_indices, query_indices)
         if n_clicks > 0:
             name = 'Batch'+str(n_clicks)
@@ -80,27 +80,29 @@ def register_callbacks(app):
             go.Scattergl(x=df_pca['1'],
                        y=df_pca['2'],
                        mode='markers',
-                       marker=dict(color='blue'),
+                       marker=dict(color='lightblue'),
                        name='unlabeled data'),
             go.Scattergl(x=selected[:, 0],
                        y=selected[:, 1],
                        mode='markers',
-                       marker=dict(color='red'),
+                       marker=dict(color='royalblue'),
                        # size=10,
                        # line=dict(color='royalblue', width=10)),
                        name=name),
             go.Contour(x=df_pca.iloc[heatmap_indices, 0],
                        y=df_pca.iloc[heatmap_indices, 1],
                        z=uncertainity[heatmap_indices],
+                       name='uncertainity map',
+                       visible=visible,
                        showlegend=True,
-                       name = "uncertainity",
+                       connectgaps=True,
+                       showscale=False,
+                       colorscale=colorscale,
+                       line=dict(width=0),
                        contours=dict(coloring="heatmap",
                                      showlines=False
-                                     ),
-                       colorscale=colorscale,
-                       connectgaps=False,
-                       #zsmooth='best',
-                       showscale=False),
+                                     )
+                       ),
         ]
         layout = go.Layout(
 
@@ -259,9 +261,11 @@ def register_callbacks(app):
                     show_fig=1
 
                     end = time.time()
+                    x = np.load('.cache/x.npy')
+                    y = np.load('.cache/y.npy')
 
-                    x = np.load('.cache/x_pool.npy')
-                    y = np.load('.cache/y_pool.npy')
+                    x_pool = np.load('.cache/x_pool.npy')
+                    y_pool = np.load('.cache/y_pool.npy')
 
                     learner = pickle.load(open(filename, 'rb'))
                     query_results = literal_eval(previous)['queries'][0:batch_size]
@@ -269,15 +273,21 @@ def register_callbacks(app):
                     learner.teach(x[query_indices], query_results)
                     # Active learner supports numpy matrices, hence use .values
 
-                    predictions = learner.predict(x)
-                    x_pool = np.delete(x, query_indices, axis=0)
-                    y_pool = np.delete(y, query_indices)
+
+                    x_pool = np.delete(x_pool, query_indices, axis=0)
+                    y_pool = np.delete(y_pool, query_indices)
                     np.save('.cache/x_pool.npy', x_pool)
                     np.save('.cache/y_pool.npy', y_pool)
         if show_fig == 1:
             df_pca = pd.read_pickle('.cache/df_pca.pkl')
             predictions = learner.predict(x)
             is_correct = (predictions == y)
+            df = pd.DataFrame(x)
+            df['y'] = predictions
+            principals = visualize(df.as_matrix(), dim='pca')
+            df_pca_output = pd.DataFrame(principals, columns=['1', '2'])
+
+
             f1_score = sklearn.metrics.f1_score(y, predictions)
             confusion_matrix = sklearn.metrics.confusion_matrix(y, predictions)
             print(confusion_matrix)
@@ -387,7 +397,7 @@ def visualize(x_pool, dim):
         pca = PCA(n_components=2, random_state=100)
         principals = pca.fit_transform(x_pool)
     elif dim == "tsne":
-        tsne = TSNE(n_components=2, random_state=100, n_jobs=4)
+        tsne = TSNE(n_components=2, random_state=100, n_jobs=4, metric='cosine')
         principals = tsne.fit_transform(x_pool)
     else:
         umaps = umap.UMAP(n_components=2, random_state=100)
@@ -416,7 +426,7 @@ def init_active_learner(x, y, batch_size):
 
 
     # batch sampling
-    preset_batch = partial(batch_kmeans, n_instances=batch_size)
+    preset_batch = partial(batch_kmeans, n_instances=batch_size, selection_strategy='k-means-closest')
     # AL model
     learner = ActiveLearner(estimator=estimator,
                             X_training=x_train,

@@ -1,11 +1,14 @@
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+import plotly.offline
 from sklearn.cluster import KMeans
 from modAL.uncertainty import classifier_entropy
-from scipy.spatial.distance import euclidean
-from .all_imports import *
-import numpy as np
+from scipy.spatial.distance import euclidean, cosine
+from sklearn.decomposition import PCA
 
-def batch_kmeans(classfier, x_pool, n_instances):
-    selection_strategy = "k-means-closest"
+
+def batch_kmeans(classfier, x_pool, n_instances, selection_strategy):
     n_clusters = n_instances
     # Get entropy using predict_proba from classifier
     entropy = classifier_entropy(classfier, x_pool)
@@ -21,7 +24,7 @@ def batch_kmeans(classfier, x_pool, n_instances):
     if selection_strategy == "k-means-closest":
         for i, instance in enumerate(cluster_inputs):
             closest_centroid = kmeans.cluster_centers_[kmeans.labels_[i]]
-            distance = euclidean(instance, closest_centroid)
+            distance = cosine(instance, closest_centroid)
             distances.append(distance)
         selection_base_values = distances
     else:
@@ -41,5 +44,86 @@ def batch_kmeans(classfier, x_pool, n_instances):
     query_idx = []
     for i in range(1, n_instances+1):
         query_idx.append(np.random.choice(range(n_samples)))
-    return batch_indices, x_pool[batch_indices], entropy, kmeans.labels_, indices
+    cluster_fig = plot_cluster(x_pool, batch_indices, indices, entropy, kmeans.labels_)
+    return batch_indices, x_pool[batch_indices], entropy
+
+
+def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
+    n_clusters = pd.Series(labels_).nunique()
+    colorscale = [[0, 'mediumturquoise'], [1, 'lightsalmon']]
+    color = ['hsl(' + str(h) + ',80%' + ',50%)' for h in np.linspace(0, 330, n_clusters)]
+    cluster_data = []
+    pca = PCA(n_components=2, random_state=100)
+    principals_pool = pca.fit_transform(x_pool)
+    principals = principals_pool[indices]
+    principals_rest = np.delete(principals_pool, indices, axis=0)
+    heatmap_indices = np.random.randint(low=0, high=x_pool.shape[0], size=100)
+
+    np.append(heatmap_indices, batch_indices)
+
+    cluster_data.append(go.Scatter(x=principals_rest[:, 0],
+                                   y=principals_rest[:, 1],
+                                   mode='markers',
+                                   name='more certain data',
+                                   showlegend=True,
+                                   marker=dict(color='grey',
+                                               opacity=0.5,
+                                               size=5)
+
+                                   ))
+    for cluster_id in np.unique(labels_):
+        cluster_indices = np.where(labels_ == cluster_id)
+        center_index = batch_indices[cluster_id]
+        cluster_principals = principals[cluster_indices]
+        # print("cluster" , cluster_id, cluster_principals
+        # )
+
+        cluster_data.append(go.Scatter(x=cluster_principals[:, 0],
+                                       y=cluster_principals[:, 1],
+                                       mode='markers',
+                                       showlegend=True,
+                                       marker=dict(color=color[cluster_id],
+                                                   size=10),
+                                       name='cluster ' + str(cluster_id),
+                                       ))
+        cluster_data.append(go.Scatter(x=[principals_pool[center_index, 0]],
+                                       y=[principals_pool[center_index, 1]],
+                                       mode='markers',
+                                       showlegend=True,
+                                       marker=dict(color=color[cluster_id],
+                                                   size=15,
+                                                   line=dict(color='black', width=5)),
+                                       name='centroid cluster ' + str(cluster_id)
+
+                                       ))
+    cluster_data.append(go.Contour(x=principals_pool[heatmap_indices][:, 0],
+                                   y=principals_pool[heatmap_indices][:, 1],
+                                   z=entropy[heatmap_indices],
+                                   name='uncertainity map',
+                                   visible='legendonly',
+                                   showlegend=True,
+                                   connectgaps=True,
+                                   showscale=False,
+                                   colorscale=colorscale,
+                                   line=dict(width=0),
+                                   contours=dict(coloring="heatmap",
+                                                 showlines=False
+                                                 )
+                                   ))
+    # cluster_data.append(go.Heatmap(x=principals_pool[heatmap_indices][:, 0],
+    #                                y=principals_pool[heatmap_indices][:, 1],
+    #                                z=entropy[heatmap_indices],
+    #                                connectgaps=True,
+    #
+    #                                showscale=False,
+    #                                name='Heatmap',
+    #                                colorscale='Viridis',
+    #                                zsmooth='best'
+    #
+    #                                ))
+
+    fig = go.Figure(data=cluster_data)
+
+    plotly.offline.plot(fig, filename="clustering.html")
+    return fig
 

@@ -4,15 +4,14 @@ import dash_core_components as dcc
 from app.callbacks import register_callbacks
 import os
 import shutil
-import plotly.io as pio
 
 app = dash.Dash(__name__, url_base_pathname='/dashboard/')
 app.config.suppress_callback_exceptions = True
 app.css.config.serve_locally = True
 app.scripts.config.serve_locally = True
-register_callbacks(app)
 
-# Layout of the app
+
+# 1. Layout of the app
 app.layout = html.Div(
     children=[
         html.Div(
@@ -26,21 +25,18 @@ app.layout = html.Div(
             style={"padding": "10px"},
             children=[
                 html.Div(
-                    id="description-text", children=html.H5("This is an active learning tool"
-                                                            " which can be used for labelling training "
-                                                            "examples, visualizing"
-                                                            " and experimenting with Active learning"""
-                                                            )
+                    id="description-text", children=html.P("Active learning explorer "
+                                                           "for experimenting with "
+                                                           "batch mode active learning "
+                                                           )
                 ),
             ]),
         # Body
-        html.Div(className="row background", style={"padding" : "10px"}, children=[
+        html.Div(className="row background", style={"padding": "10px"}, children=[
             dcc.Store(id='store'),
             dcc.Store(id='querystore'),
             dcc.Store(id='store_dataset'),
             dcc.Store(id='start_timer'),
-
-
             html.Div(className="eight columns", children=[
                 html.Div(children=[
                 html.Button('Fetch next batch', id='next_round', autoFocus=True,
@@ -53,8 +49,6 @@ app.layout = html.Div(
                     dcc.RadioItems(id='radio_label'),
                     html.Button('Next', id='submit'),
                 ], ),
-
-
                 html.Div(id='n_times', style={'display': 'none'})
             ]),
                 dcc.Loading(dcc.Graph(id='scatter')),
@@ -63,53 +57,59 @@ app.layout = html.Div(
                 dcc.Loading(dcc.Graph(id='decision')),
                 dcc.Graph(id='ground'),
             ], ),
+            html.Div(
+                className='three columns',
+                style={
+                    'display': 'inline-block',
+                    'overflow-y': 'hidden',
+                    'overflow-x': 'hidden',
+                },
+                children=[
+                    html.P('Select a dataset', style={'text-align': 'left', 'color': 'light-grey'}),
+                    dcc.Dropdown(id='select-dataset',
+                                 options=[{'label': 'davidson', 'value': 'davidson_dataset'},
+                                          {'label': 'founta', 'value': 'founta_dataset'},
+                                          {'label': 'gao', 'value': 'gao_dataset'},
+                                          {'label': 'golbeck', 'value': 'golbeck_dataset'},
+                                          {'label': 'waseem', 'value': 'waseem_dataset'},
+                                          {'label': 'mnist-mini', 'value': 'mnist'},
+                                          # support only text and image for now
+                                          # {'label': 'iris', 'value': 'iris'},
+                                          # {'label': 'breast-cancer', 'value': 'bc'},
+                                          # {'label': 'wine', 'value': 'wine'}
+                                          ],
+                                 clearable=False,
+                                 searchable=False,
+                                 value='gao_dataset'
+                                 ),
+                    html.P(' '),
+                    html.P('Choose batch size',
+                           style={'text-align': 'left', 'color': 'light-grey'}),
+                    html.Div(dcc.Slider(id='query-batch-size', min=3, max=100, step=None,
+                                        marks={
+                                            i: str(i) for i in [3, 5, 10, 50, 100]
+                                        }, value=3), style={"margin-bottom": "30px"}),
+                    html.P('Choose visualization technique',
+                           style={'text-align': 'left', 'color': 'light-grey',
+                                  "display":"none"}),
+                    dcc.Dropdown(id='al',
+                                 options=[{'label': 'k-means-closest', 'value': 'k-means-closest'},
+                                          {'label': 'k-means-uncertain', 'value': 'k-means-uncertain'},
+                                          {'label': 'ranked-batch-mode', 'value': 'ranked'},
+                                          ],
+                                 value='k-means-closest',
+                                 #style={"display": "none"}
+                                 ),
+                    dcc.RadioItems(id='dim',
+                                   options=[{'label': 'PCA', 'value': 'pca'},
+                                            {'label': 'T-SNE', 'value': 'tsne'},
+                                            {'label': 'UMAP', 'value': 'umap'}],
+                                   value='pca',
+                                   style={"display": "none"}
+                                   ),
+                    html.Button('Start', id='start'),
 
-
-        html.Div(
-            className='three columns',
-            style={
-                'display': 'inline-block',
-                'overflow-y': 'hidden',
-                'overflow-x': 'hidden',
-            },
-            children=[
-                html.P('Select a dataset', style={'text-align': 'left', 'color': 'light-grey'}),
-                dcc.Dropdown(id='select-dataset',
-                             options=[{'label': 'davidson', 'value': 'davidson_dataset'},
-                                      {'label': 'founta', 'value': 'founta_dataset'},
-                                      {'label': 'gao', 'value': 'gao_dataset'},
-                                      {'label': 'golbeck', 'value': 'golbeck_dataset'},
-                                      {'label': 'waseem', 'value': 'waseem_dataset'},
-                                      {'label': 'mnist-mini', 'value': 'mnist'},
-                                      # support only text and image for now
-                                      # {'label': 'iris', 'value': 'iris'},
-                                      # {'label': 'breast-cancer', 'value': 'bc'},
-                                      # {'label': 'wine', 'value': 'wine'}
-                                      ],
-                             clearable=False,
-                             searchable=False,
-                             value='gao_dataset'
-                             ),
-                html.P(' '),
-                html.P('Choose batch size',
-                       style={'text-align': 'left', 'color': 'light-grey'}),
-                html.Div(dcc.Slider(id='query-batch-size', min=5, max=100, step=None,
-                                    marks={
-                                        i: str(i) for i in [5, 10, 50, 100]
-                                    }, value=5), style={"margin-bottom": "30px"}),
-                html.P('Choose visualization technique',
-                       style={'text-align': 'left', 'color': 'light-grey',
-                              "display":"none"}),
-                dcc.RadioItems(id='dim',
-                               options=[{'label': 'PCA', 'value': 'pca'},
-                                        {'label': 'T-SNE', 'value': 'tsne'},
-                                        {'label': 'UMAP', 'value': 'umap'}],
-                               value='pca',
-                               style={"display": "none"}
-                               ),
-                html.Button('Start', id='start'),
-
-            ]),
+                ]),
         ]),
 
         html.Div(id='selected-data'),
@@ -117,6 +117,10 @@ app.layout = html.Div(
         dcc.Loading(html.Div(id='hidden-div', style={'display': 'none'}), fullscreen=True),
 
     ])
+
+# 2. Callbacks
+register_callbacks(app)
+
 
 # Running the server
 if __name__ == '__main__':
