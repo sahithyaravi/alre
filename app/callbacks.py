@@ -53,7 +53,7 @@ def register_callbacks(app):
         if n_clicks is None or n_clicks == 0 or start > storedata:
             n_clicks = 0
             query_indices, x_pool, y_pool = init_active_learner(x, y, batch_size)
-            uncertainity = []
+            uncertainity = np.empty(x_pool.shape)
 
         else:
             x_pool = np.load('.cache/x_pool.npy')
@@ -62,12 +62,15 @@ def register_callbacks(app):
             query_indices, query_instance, uncertainity, labels_, indices = learner.query(x_pool)
 
             cluster_fig = plot_cluster(x_pool, query_indices, indices, uncertainity, labels_)
-            uncertainity = uncertainity[query_indices]
+
 
         # Plot the query instances
         principals = visualize(x_pool, dim)
         df_pca = pd.DataFrame(principals, columns=['1', '2'])
         selected = principals[query_indices]
+        heatmap_indices = np.random.randint(low=0, high=x_pool.shape[0], size=100)
+        colorscale = [[0, 'gold'], [0.5, 'mediumturquoise'], [1, 'lightsalmon']]
+        np.append(heatmap_indices, query_indices)
         if n_clicks > 0:
             name = 'Batch'+str(n_clicks)
             start_timer = time.time()
@@ -77,22 +80,30 @@ def register_callbacks(app):
             go.Scattergl(x=df_pca['1'],
                        y=df_pca['2'],
                        mode='markers',
-                       marker=dict(color='lightblue'),
+                       marker=dict(color='blue'),
                        name='unlabeled data'),
             go.Scattergl(x=selected[:, 0],
                        y=selected[:, 1],
                        mode='markers',
-                       marker=dict(color='royalblue'),
+                       marker=dict(color='red'),
                        # size=10,
                        # line=dict(color='royalblue', width=10)),
                        name=name),
-            go.Heatmap(x=selected[:, 0],
-                       y=selected[:, 1],
-                       z=uncertainity,
-                      # zsmooth='fast',
+            go.Contour(x=df_pca.iloc[heatmap_indices, 0],
+                       y=df_pca.iloc[heatmap_indices, 1],
+                       z=uncertainity[heatmap_indices],
+                       showlegend=True,
+                       name = "uncertainity",
+                       contours=dict(coloring="heatmap",
+                                     showlines=False
+                                     ),
+                       colorscale=colorscale,
+                       connectgaps=False,
+                       #zsmooth='best',
                        showscale=False),
         ]
         layout = go.Layout(
+
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             clickmode='event+select')

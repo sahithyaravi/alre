@@ -48,6 +48,7 @@ cmap_bold = [[0, '#FF0000'], [0.5, '#00FF00'], [1, '#0000FF']]
 
 def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
     n_clusters = pd.Series(labels_).nunique()
+    colorscale = [[0, 'gold'], [0.5, 'mediumturquoise'], [1, 'lightsalmon']]
     color = ['hsl(' + str(h) + ',80%' + ',50%)' for h in np.linspace(0, 330, n_clusters)]
     cluster_data = []
     pca = PCA(n_components=2, random_state=100)
@@ -99,7 +100,7 @@ def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
                                    showlegend=True,
                                    connectgaps=True,
                                    showscale=False,
-                                   colorscale='Hot',
+                                   colorscale=colorscale,
                                    contours=dict(coloring="heatmap",
                                                  showlines=False
                                                  )
