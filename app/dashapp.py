@@ -61,6 +61,7 @@ app.layout = html.Div(
                 dcc.Graph(id='scatter-hidden', style={'display': 'none'}),
                 html.Div(id='score'),
                 dcc.Loading(dcc.Graph(id='decision')),
+                dcc.Graph(id='ground'),
             ], ),
 
 
@@ -87,7 +88,7 @@ app.layout = html.Div(
                                       ],
                              clearable=False,
                              searchable=False,
-                             value='founta_dataset'
+                             value='gao_dataset'
                              ),
                 html.P(' '),
                 html.P('Choose batch size',

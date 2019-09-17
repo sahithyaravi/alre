@@ -3,6 +3,31 @@ from .select_batch_k_means import *
 
 
 def register_callbacks(app):
+    @app.callback(Output('ground', 'figure'),
+                   [Input('start', 'n_clicks'),
+                    Input('submit', 'n_clicks'),],
+                  [State('select-dataset','value'),
+                   State('dim', 'value')])
+    def plot_ground_truth(start, submit, dataset, dim):
+        print("plotting ground truth")
+        time.sleep(1)
+        x = np.load('.cache/x.npy')
+        y = np.load('.cache/y.npy')
+        principals = visualize(x, dim)
+        positive = (y == 1)
+        print(positive)
+        negative = (y == 0)
+        data = [go.Scattergl(x=principals[positive, 0],
+                          y=principals[positive, 1],
+                          name='1',
+                          mode='markers'),
+               go.Scattergl(x=principals[negative, 0],
+                          y=principals[negative, 1],
+                            name='0',
+                          mode='markers')
+               ]
+        return go.Figure(data, layout=go.Layout(title='Ground truth'))
+
     @app.callback([Output('scatter-hidden', 'figure'),
                    Output('label', 'children'),
                    Output('store', 'data'),
@@ -19,6 +44,8 @@ def register_callbacks(app):
         print("entered update_scatter_plot")
         start_timer = 0
         df, x, y = get_dataset(dataset)
+        np.save('.cache/x.npy', x)
+        np.save('.cache/y.npy', y)
         if storedata is None:
             storedata = 0
         if start is None:
@@ -203,11 +230,41 @@ def register_callbacks(app):
                                 start_timer):
         decision = go.Figure()
         score = ''
-        colorscale = 'Rainbow'
+        show_fig = 0
+
+
         if n_clicks is None and labels == dataset:
+            start_timer = 0
+            end = time.time()
+            show_fig = 1
             x = np.load('.cache/x.npy')
             y = np.load('.cache/y.npy')
             learner = pickle.load(open(filename, 'rb'))
+
+        else:
+            if previous and n_clicks is not None:
+
+                if(literal_eval(previous)["clicks"]) == (batch_size*n_clicks):
+                    show_fig=1
+
+                    end = time.time()
+
+                    x = np.load('.cache/x_pool.npy')
+                    y = np.load('.cache/y_pool.npy')
+
+                    learner = pickle.load(open(filename, 'rb'))
+                    query_results = literal_eval(previous)['queries'][0:batch_size]
+                    query_indices = list(range(0, batch_size))
+                    learner.teach(x[query_indices], query_results)
+                    # Active learner supports numpy matrices, hence use .values
+
+                    predictions = learner.predict(x)
+                    x_pool = np.delete(x, query_indices, axis=0)
+                    y_pool = np.delete(y, query_indices)
+                    np.save('.cache/x_pool.npy', x_pool)
+                    np.save('.cache/y_pool.npy', y_pool)
+        if show_fig == 1:
+            df_pca = pd.read_pickle('.cache/df_pca.pkl')
             predictions = learner.predict(x)
             is_correct = (predictions == y)
             f1_score = sklearn.metrics.f1_score(y, predictions)
@@ -218,101 +275,49 @@ def register_callbacks(app):
                                   z=confusion_matrix)]
             cm_fig = dcc.Graph(figure=go.Figure(data=cm_data,
                                                 layout=go.Layout(
-                                                                 xaxis={'title': 'Predicted labels',
-                                                                        'side': 'bottom'},
-                                                                 yaxis={'title': 'True labels',
-                                                                        "autorange":"reversed"},
-                                                                 height=400, width=400)
+                                                    xaxis={'title': 'Predicted labels',
+                                                           'side': 'bottom'},
+                                                    yaxis={'title': 'True labels',
+                                                           "autorange": "reversed"},
+                                                    height=400, width=400)
                                                 ),
                                )
-            score = html.Div([html.H5('Initial batch: '),
-                             html.P('F1 Score: ' + str(round(f1_score, 3))),
+            score = html.Div([html.H5('Batch # ' + str(n_clicks)),
+                              html.P('F1 Score: ' + str(round(f1_score, 3))),
+                              html.P(' Time for batch: ' +
+                                     str(round(end - start_timer)) + ' sec'),
                               html.P('Confusion Matrix: '),
-                              cm_fig])
-            df_pca = pd.read_pickle('.cache/df_pca.pkl')
-            data_dec = [go.Scatter(x=df_pca['1'].values[is_correct],
-                                   y=df_pca['2'].values[is_correct],
-                                   mode='markers',
-                                   name='correct predictions',
-                                   marker=dict(color=predictions[is_correct],
-                                               colorscale=colorscale,
-                                               opacity=0.7,
-                                               showscale=True)),
+                              cm_fig
+                              ])
+            data_dec = [
 
-                        go.Scatter(x=df_pca['1'].values[~is_correct],
-                                   y=df_pca['2'].values[~is_correct],
-                                   mode='markers',
-                                   name='wrong predictions',
-                                   marker=dict(symbol="x",
-                                               opacity=0.7,
-                                               colorscale=colorscale,
-                                               color=predictions[~is_correct]))]
-            layout = go.Layout(title='Output of classifier', showlegend=False)
-            decision = go.Figure(data_dec, layout=layout)
+                go.Scattergl(x=df_pca['1'].values[predictions == 1],
+                             y=df_pca['2'].values[predictions == 1],
+                             mode='markers',
+                             name='1',
+                             marker=dict(size=12,
+                                         color='blue')),
 
+                go.Scattergl(x=df_pca['1'].values[predictions == 0],
+                             y=df_pca['2'].values[predictions == 0],
+                             mode='markers',
+                             name='0',
+                             marker=dict(size=12,
+                                         color='red',
+                                         )),
 
-        else:
-            if previous and n_clicks is not None:
-                if(literal_eval(previous)["clicks"]) == (batch_size*n_clicks):
-                    end = time.time()
+                go.Scattergl(x=df_pca['1'].values[~is_correct],
+                             y=df_pca['2'].values[~is_correct],
+                             mode='markers',
+                             name='wrong predictions',
+                             marker=dict(symbol="x",
+                                         opacity=0.7,
+                                         size=8,
+                                         color='black'
+                                         )),
+            ]
+            decision = go.Figure(data_dec, layout=go.Layout(title='Output of classfier'))
 
-                    x_pool = np.load('.cache/x_pool.npy')
-                    y_pool = np.load('.cache/y_pool.npy')
-
-                    learner = pickle.load(open(filename, 'rb'))
-                    query_results = literal_eval(previous)['queries'][0:batch_size]
-                    query_indices = list(range(0, batch_size))
-                    learner.teach(x_pool[query_indices], query_results)
-                    # Active learner supports numpy matrices, hence use .values
-                    df_pca = pd.read_pickle('.cache/df_pca.pkl')
-                    predictions = learner.predict(x_pool)
-                    is_correct = (predictions == y_pool)
-                    data_dec = [go.Scatter(x=df_pca['1'].values[is_correct],
-                                           y=df_pca['2'].values[is_correct],
-                                           mode='markers',
-                                           name='correct predictions',
-                                           marker=dict(color=predictions[is_correct],
-                                                       colorscale=colorscale,
-                                                       opacity=0.7,
-                                                       showscale=True)),
-
-                                go.Scatter(x=df_pca['1'].values[~is_correct],
-                                           y=df_pca['2'].values[~is_correct],
-                                           mode='markers',
-                                           name='wrong predictions',
-                                           marker=dict(symbol="x",
-                                                       colorscale=colorscale,
-                                                       opacity=0.7,
-                                                       color=predictions[~is_correct]))]
-                    layout = go.Layout(title='Output of classifier', showlegend=False)
-                    # Remove query indices from unlabelled pool
-
-                    f1_score = sklearn.metrics.f1_score(y_pool, predictions)
-                    confusion_matrix = sklearn.metrics.confusion_matrix(y_pool, predictions)
-                    cm_data = [go.Heatmap(x=np.unique(y_pool),
-                                          y=np.unique(y_pool),
-                                          z=confusion_matrix)]
-                    cm_fig = dcc.Graph(figure=go.Figure(data=cm_data,
-                                                        layout=go.Layout(
-                                                            xaxis={'title': 'Predicted labels',
-                                                                   'side': 'bottom'},
-                                                            yaxis={'title': 'True labels',
-                                                                   "autorange": "reversed"},
-                                                            height=400, width=400)
-                                                        ),
-                                       )
-                    score = html.Div([html.H5('Batch # ' + str(n_clicks)),
-                                     html.P('F1 Score: ' + str(round(f1_score, 3))),
-                                     html.P(' Time for batch: ' +
-                                     str(round(end-start_timer)) + ' sec'),
-                                      html.P('Confusion Matrix: '),
-                                      cm_fig
-                                      ])
-                    decision = go.Figure(data_dec, layout=layout)
-                    x_pool = np.delete(x_pool, query_indices, axis=0)
-                    y_pool = np.delete(y_pool, query_indices)
-                    np.save('.cache/x_pool.npy', x_pool)
-                    np.save('.cache/y_pool.npy', y_pool)
         return decision, score
 
 
@@ -382,8 +387,7 @@ def visualize(x_pool, dim):
 def init_active_learner(x, y, batch_size):
 
     query_indices = np.random.randint(low=0, high=x.shape[0], size=round(0.1*x.shape[0]))
-    np.save('.cache/x.npy', x)
-    np.save('.cache/y.npy', y)
+
     x_train = x[query_indices]
     y_train = y[query_indices]
 

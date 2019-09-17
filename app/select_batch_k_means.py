@@ -2,7 +2,7 @@ from sklearn.cluster import KMeans
 from modAL.uncertainty import classifier_entropy
 from scipy.spatial.distance import euclidean
 from .all_imports import *
-
+import numpy as np
 
 def batch_kmeans(classfier, x_pool, n_instances):
     selection_strategy = "k-means-closest"

@@ -4,6 +4,7 @@ from sklearn.decomposition import PCA
 from PIL import Image
 from io import BytesIO
 import base64
+from .select_batch_k_means import *
 import PIL.ImageOps
 import numpy as np
 import plotly.graph_objs as go
@@ -43,6 +44,7 @@ cmap_light = [[1, "rgb(165,0,38)"],
               [0.1, "rgb(69,117,180)"],
               [0.0, "rgb(49,54,149)"]]
 cmap_bold = [[0, '#FF0000'], [0.5, '#00FF00'], [1, '#0000FF']]
+
 
 def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
     n_clusters = pd.Series(labels_).nunique()
@@ -118,3 +120,5 @@ def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
 
     plotly.offline.plot(fig, filename="clustering.html")
     return fig
+
+
