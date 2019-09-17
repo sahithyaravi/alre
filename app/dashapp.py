@@ -83,10 +83,8 @@ app.layout = html.Div(
                                                      value='pca',
                                                      style={"display": "none"}
                                                      ), style={'width': '60%'})]),
-
-                html.Button('Start', id='start'),
-
             ]),
+        html.Button('Start', id='start', style={'width': '40%'}),
 
         html.Div(
             id='mid-bar',
@@ -97,26 +95,26 @@ app.layout = html.Div(
         ),
 
         # Body
-        html.Div(className="twelve columns", children=[
-            html.Div(children=[
-                html.Button('Fetch next batch', id='next_round', autoFocus=True,
-                            style={'color': 'white', 'background-color': 'green'}),
-                html.H1(' '),
-                html.Div(id="query_data"),
-                html.H1(' '),
-                html.Div([
-                    html.Div(id='label', style={'display': 'none'}),
-                    dcc.RadioItems(id='radio_label'),
-                    html.Button('Next', id='submit'),
-                ], ),
-                html.Div(id='n_times', style={'display': 'none'})
-            ]),
-            dcc.Loading(dcc.Graph(id='scatter')),
-            dcc.Graph(id='scatter-hidden', style={'display': 'none'}),
-            html.Div(id='score'),
-            dcc.Loading(dcc.Graph(id='decision')),
-            dcc.Graph(id='ground'),
-        ], ),
+
+        html.Div(children=[
+            html.Button('Fetch next batch', id='next_round', autoFocus=True,
+                        style={'color': 'white', 'background-color': 'green'}),
+            html.H1(' '),
+            html.Div(id="query_data"),
+            html.H1(' '),
+            html.Div([
+                html.Div(id='label', style={'display': 'none'}),
+                dcc.RadioItems(id='radio_label'),
+                html.Button('Next', id='submit'),
+            ], ),
+            html.Div(id='n_times', style={'display': 'none'})
+        ]),
+        dcc.Loading(dcc.Graph(id='scatter')),
+        dcc.Graph(id='scatter-hidden', style={'display': 'none'}),
+        html.Div(id='score'),
+        dcc.Loading(dcc.Graph(id='decision')),
+        dcc.Graph(id='ground'),
+
 
 
 
