@@ -5,12 +5,14 @@ from .select_batch_k_means import *
 def register_callbacks(app):
     @app.callback(Output('ground', 'figure'),
                    [Input('start', 'n_clicks'),
-                    Input('submit', 'n_clicks'),],
+                    Input('submit', 'n_clicks'),
+                    Input('next_round','n_clicks')],
                   [State('select-dataset','value'),
                    State('dim', 'value')])
-    def plot_ground_truth(start, submit, dataset, dim):
+    def plot_ground_truth(start, submit, next_round, dataset, dim):
         print("plotting ground truth")
-        time.sleep(1)
+        if next_round is None:
+            time.sleep(5)
         x = np.load('.cache/x.npy')
         y = np.load('.cache/y.npy')
         principals = visualize(x, dim)
@@ -44,6 +46,7 @@ def register_callbacks(app):
         print("entered update_scatter_plot")
         start_timer = 0
         df, x, y = get_dataset(dataset)
+        df.to_pickle('.cache/df_original.pkl')
         # Original data x and y
         np.save('.cache/x.npy', x)
         np.save('.cache/y.npy', y)
@@ -54,63 +57,105 @@ def register_callbacks(app):
         if n_clicks is None or n_clicks == 0 or start > storedata:
             visible = False
             n_clicks = 0
-            query_indices, x_pool, y_pool = init_active_learner(x, y, batch_size)
-            uncertainity = np.empty(x_pool.shape)
+            train_indices, test_indices, x_pool = init_active_learner(x, y, batch_size)
+            np.save('.cache/x_train.npy', x[train_indices])
+            np.save('.cache/x_test.npy', x[test_indices])
+            np.save('.cache/y_test.npy', y[test_indices])
+
+            principals = visualize(x_pool, dim)
+
+            principals_test = visualize(x[train_indices], dim)
+            principals_train = visualize(x[test_indices], dim)
+            selected = principals_train
+            df_pca = pd.DataFrame(principals, columns=['1', '2'])
+            data = [
+                go.Scattergl(x=principals_train[:,0],
+                             y=principals_train[:,1],
+                             mode='markers',
+                             marker=dict(color='lightblue'),
+                             name='training data'),
+                go.Scattergl(x=principals_test[:, 0],
+                             y=principals_test[:, 1],
+                             mode='markers',
+                             marker=dict(color='azure'),
+                             name='test data'),
+                go.Scattergl(x=principals[:, 0],
+                             y=principals[:, 1],
+                             mode='markers',
+                             marker=dict(color='steelblue'),
+                             name='unlabelled data')
+            ]
+
 
         else:
             visible = 'legendonly'
             x_pool = np.load('.cache/x_pool.npy')
-            df = pd.read_pickle('.cache/df.pkl')
             learner = pickle.load(open(filename, 'rb'))
             query_indices, query_instance, uncertainity = learner.query(x_pool)
 
-        # Plot the query instances
-        principals = visualize(x_pool, dim)
-        df_pca = pd.DataFrame(principals, columns=['1', '2'])
-        selected = principals[query_indices]
-        heatmap_indices = np.random.randint(low=0, high=x_pool.shape[0], size=100)
-        colorscale = [[0, 'mediumturquoise'], [1, 'lightsalmon']]
-        np.append(heatmap_indices, query_indices)
+
+            x_train = np.load('.cache/x_train.npy')
+            x_test= np.load('.cache/x_test.npy')
+            df = pd.read_pickle('.cache/df.pkl')
+
+            principals = visualize(x_pool, dim)
+            df_pca = pd.DataFrame(principals, columns=['1', '2'])
+            principals_train = visualize(x_train, dim)
+            principals_test = visualize(x_test, dim)
+            selected = principals[query_indices]
+
+            heatmap_indices = np.random.randint(low=0, high=x_pool.shape[0], size=100)
+            colorscale = [[0, 'mediumturquoise'], [1, 'lightsalmon']]
+            np.append(heatmap_indices, query_indices)
+            np.save('.cache/selected.npy', selected)
+            df.ix[query_indices].to_pickle('.cache/selected.pkl')
+            df.drop(query_indices, inplace=True)
+            df = df.reset_index(drop=True)
+            data = [
+                go.Scattergl(x=principals_train[:, 0],
+                             y=principals_train[:, 1],
+                             mode='markers',
+                             marker=dict(color='lightblue'),
+                             name='training data'),
+                go.Scattergl(x=principals_test[:, 0],
+                             y=principals_test[:, 1],
+                             mode='markers',
+                             marker=dict(color='azure'),
+                             name='test data'),
+                go.Scattergl(x=principals[:, 0],
+                             y=principals[:, 1],
+                             mode='markers',
+                             marker=dict(color='lightsteelblue'),
+                             name='unlabelled data'),
+                go.Scattergl(x=selected[:, 0],
+                             y=selected[:, 1],
+                             mode='markers',
+                             marker=dict(color='darkblue'),
+                             # size=10,
+                             # line=dict(color='royalblue', width=10)),
+                             name='selected queries'),
+                go.Contour(x=principals[heatmap_indices, 0],
+                           y=principals[heatmap_indices, 1],
+                           z=uncertainity[heatmap_indices],
+                           name='uncertainity map',
+                           visible=visible,
+                           showlegend=True,
+                           connectgaps=True,
+                           showscale=False,
+                           colorscale=colorscale,
+                           line=dict(width=0),
+                           contours=dict(coloring="heatmap",
+                                         showlines=False
+                                         )
+                           ),
+            ]
+
         if n_clicks > 0:
             name = 'Batch'+str(n_clicks)
             start_timer = time.time()
-        else:
-            name = 'init random train set'
-        data = [
-            go.Scattergl(x=df_pca['1'],
-                       y=df_pca['2'],
-                       mode='markers',
-                       marker=dict(color='lightblue'),
-                       name='unlabeled data'),
-            go.Scattergl(x=selected[:, 0],
-                       y=selected[:, 1],
-                       mode='markers',
-                       marker=dict(color='royalblue'),
-                       # size=10,
-                       # line=dict(color='royalblue', width=10)),
-                       name=name),
-            go.Contour(x=df_pca.iloc[heatmap_indices, 0],
-                       y=df_pca.iloc[heatmap_indices, 1],
-                       z=uncertainity[heatmap_indices],
-                       name='uncertainity map',
-                       visible=visible,
-                       showlegend=True,
-                       connectgaps=True,
-                       showscale=False,
-                       colorscale=colorscale,
-                       line=dict(width=0),
-                       contours=dict(coloring="heatmap",
-                                     showlines=False
-                                     )
-                       ),
-        ]
-        layout = go.Layout(
 
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            clickmode='event+select')
-        #if n_clicks is None or n_clicks == 0 or start > storedata:
-        fig = go.Figure(data, layout)
+
+        fig = go.Figure(data)
 
         # Labels
         values = np.unique(y)
@@ -122,10 +167,6 @@ def register_callbacks(app):
             for l, value in tuple_list:
                 options.append({'label': l, 'value': value})
         # Save files
-        np.save('.cache/selected.npy', selected)
-        df.ix[query_indices].to_pickle('.cache/selected.pkl')
-        df.drop(query_indices, inplace=True)
-        df = df.reset_index(drop=True)
         df.to_pickle('.cache/df.pkl')
         df_pca.to_pickle('.cache/df_pca.pkl')
 
@@ -279,13 +320,13 @@ def register_callbacks(app):
                     np.save('.cache/x_pool.npy', x_pool)
                     np.save('.cache/y_pool.npy', y_pool)
         if show_fig == 1:
-            df_pca = pd.read_pickle('.cache/df_pca.pkl')
+
             predictions = learner.predict(x)
             is_correct = (predictions == y)
             df = pd.DataFrame(x)
-            df['y'] = predictions
+            #df['y'] = predictions
             principals = visualize(df.as_matrix(), dim='pca')
-            df_pca_output = pd.DataFrame(principals, columns=['1', '2'])
+            df_pca = pd.DataFrame(principals, columns=['1', '2'])
 
 
             f1_score = sklearn.metrics.f1_score(y, predictions)
@@ -406,8 +447,10 @@ def visualize(x_pool, dim):
 
 
 def init_active_learner(x, y, batch_size):
-
-    query_indices = np.random.randint(low=0, high=x.shape[0], size=round(0.1*x.shape[0]))
+    # get 30% of data
+    indices = np.random.randint(low=0, high=x.shape[0], size=round(0.3*x.shape[0]))
+    query_indices = indices[0:round(0.1*x.shape[0])]
+    test_indices = indices[round(0.1*x.shape[0]): round(0.3*x.shape[0])]
 
     x_train = x[query_indices]
     y_train = y[query_indices]
@@ -438,4 +481,4 @@ def init_active_learner(x, y, batch_size):
 
     np.save('.cache/x_pool.npy', x_pool)
     np.save('.cache/y_pool.npy', y_pool)
-    return query_indices, x, y
+    return query_indices, test_indices, x_pool
