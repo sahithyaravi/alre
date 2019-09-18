@@ -35,7 +35,7 @@ def register_callbacks(app):
                    Output('store', 'data'),
                    Output('radio_label', 'options'),
                    Output('n_times', 'value'),
-                   Output('start_timer', 'data')],
+                   ],
                   [Input('next_round', 'n_clicks'),
                    Input('start', 'n_clicks')],
                   [State('select-dataset', 'value'),
@@ -44,7 +44,7 @@ def register_callbacks(app):
                    State('store', 'data')])
     def update_scatter_plot(n_clicks, start, dataset, batch_size, dim, storedata):
         print("entered update_scatter_plot")
-        start_timer = 0
+
         df, x, y = get_dataset(dataset)
         df.to_pickle('.cache/df_original.pkl')
         # Original data x and y
@@ -152,7 +152,7 @@ def register_callbacks(app):
 
         if n_clicks > 0:
             name = 'Batch'+str(n_clicks)
-            start_timer = time.time()
+
 
 
         fig = go.Figure(data)
@@ -170,11 +170,12 @@ def register_callbacks(app):
         df.to_pickle('.cache/df.pkl')
         df_pca.to_pickle('.cache/df_pca.pkl')
 
-        return fig, dataset, start, options, n_clicks, start_timer
+        return fig, dataset, start, options, n_clicks
 
     @app.callback(
         [Output('query_data', 'children'),
-         Output('scatter','figure')],
+         Output('scatter','figure'),
+         Output('start_timer', 'value')],
         [Input('n_times', 'value'),
          Input('submit', 'n_clicks'),
          ],
@@ -182,13 +183,16 @@ def register_callbacks(app):
          State('scatter-hidden', 'figure')]
         )
     def enable_query(next_round, submit, dataset, fig):
+
         print("entered enable_query")
-        start = time.time()
+        start_timer = dict()
         if fig is None:
             fig = go.Figure()
         image = " "
         if next_round is None or next_round == 0:
-            return image, fig
+            df_timer = pd.DataFrame()
+            df_timer.to_pickle('.cache/df_timer.pkl')
+            return image, fig, start_timer
         try:
             index = 0
             selected_df = pd.read_pickle('.cache/selected.pkl')
@@ -213,6 +217,7 @@ def register_callbacks(app):
                 index = 0
                 selected_df = selected_df.reset_index(drop=True)
                 image = html.Div(html.H6(selected_df.ix[index]['text']))
+                start_timer['data'] = selected_df.ix[index]['text']
 
             fig['data'].append(go.Scattergl(x=[selected[0, 0]],
                            y=[selected[0, 1]],
@@ -224,9 +229,10 @@ def register_callbacks(app):
             selected_df.drop(0, inplace=True, axis=0)
             selected_df.to_pickle('.cache/selected.pkl')
             np.save('.cache/selected.npy', selected)
-        end = time.time()
-        print(end-start)
-        return image, fig
+
+            start_timer['time']= time.time()
+
+        return image, fig, start_timer
 
     @app.callback(
         [
@@ -279,7 +285,7 @@ def register_callbacks(app):
          Input('select-dataset', 'value'),
 
          ], [State('querystore', 'data'),
-             State('start_timer', 'data')])
+             State('start_timer', 'value')])
     def perform_active_learning(previous, n_clicks, batch_size, labels, dataset, query_round,
                                 start_timer):
         decision = go.Figure()
@@ -288,8 +294,7 @@ def register_callbacks(app):
 
 
         if n_clicks is None and labels == dataset:
-            start_timer = 0
-            end = time.time()
+            n_clicks = 0
             show_fig = 1
             x = np.load('.cache/x.npy')
             y = np.load('.cache/y.npy')
@@ -297,6 +302,13 @@ def register_callbacks(app):
 
         else:
             if previous and n_clicks is not None:
+                if start_timer:
+                    df_timer = pd.read_pickle('.cache/df_timer.pkl')
+                    start_timer['query'] = time.time()- start_timer['time']
+                    timer_df = pd.DataFrame(start_timer, index=[randint(0,9999)])
+                    df_timer = pd.concat([timer_df, df_timer])
+                    df_timer.to_pickle('.cache/df_timer.pkl')
+                    print(df_timer.head())
 
                 if(literal_eval(previous)["clicks"]) == (batch_size*n_clicks):
                     show_fig=1
@@ -346,8 +358,8 @@ def register_callbacks(app):
                                )
             score = html.Div([html.H5('Batch # ' + str(n_clicks)),
                               html.P('F1 Score: ' + str(round(f1_score, 3))),
-                              html.P(' Time for batch: ' +
-                                     str(round(end - start_timer)) + ' sec'),
+                              # html.P(' Time for batch: ' +
+                              #        str(round(end - start_timer)) + ' sec'),
                               html.P('Confusion Matrix: '),
                               cm_fig
                               ])

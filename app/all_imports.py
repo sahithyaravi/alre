@@ -24,6 +24,7 @@ from ast import literal_eval
 import dash_html_components as html
 from sklearn.datasets import fetch_openml
 import umap
+from random import randint
 #from sklearn.manifold import TSNE
 from MulticoreTSNE import MulticoreTSNE as TSNE
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
