@@ -122,7 +122,7 @@ app.layout = html.Div(
         dcc.Store(id='store'),
         dcc.Store(id='querystore'),
         dcc.Store(id='store_dataset'),
-        dcc.Store(id='start_timer'),
+        html.Div(id='start_timer'),
 
         dcc.Loading(html.Div(id='hidden-div', style={'display': 'none'}), fullscreen=True),
 

@@ -1,6 +1,6 @@
 from .all_imports import *
 from .select_batch_k_means import *
-
+import dash_table
 
 def register_callbacks(app):
     @app.callback(Output('ground', 'figure'),
@@ -291,6 +291,7 @@ def register_callbacks(app):
         decision = go.Figure()
         score = ''
         show_fig = 0
+        table = html.Div()
 
 
         if n_clicks is None and labels == dataset:
@@ -304,13 +305,25 @@ def register_callbacks(app):
             if previous and n_clicks is not None:
                 if start_timer:
                     df_timer = pd.read_pickle('.cache/df_timer.pkl')
-                    start_timer['query'] = time.time()- start_timer['time']
+                    start_timer['time_to_label'] = time.time()- start_timer['time']
                     timer_df = pd.DataFrame(start_timer, index=[randint(0,9999)])
                     df_timer = pd.concat([timer_df, df_timer])
                     df_timer.to_pickle('.cache/df_timer.pkl')
-                    print(df_timer.head())
+
 
                 if(literal_eval(previous)["clicks"]) == (batch_size*n_clicks):
+                    df_timer.drop('time', axis=1, inplace=True)
+                    table = dash_table.DataTable(
+                        id='table',
+                        columns=[{"name": i, "id": i} for i in df_timer.columns],
+                        data=df_timer.to_dict('records'),
+                          style_cell={
+                              'textAlign': 'left',
+                            'height': 'auto',
+                            'minWidth': '0px', 'maxWidth': '180px',
+                            'whiteSpace': 'normal'
+                        }
+                    )
                     show_fig=1
 
                     end = time.time()
@@ -361,7 +374,8 @@ def register_callbacks(app):
                               # html.P(' Time for batch: ' +
                               #        str(round(end - start_timer)) + ' sec'),
                               html.P('Confusion Matrix: '),
-                              cm_fig
+                              cm_fig,
+                              table
                               ])
             data_dec = [
 
