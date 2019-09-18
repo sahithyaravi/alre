@@ -96,24 +96,37 @@ app.layout = html.Div(
 
         # Body
 
-        html.Div(children=[
-            html.Button('Fetch next batch', id='next_round', autoFocus=True,
-                        style={'color': 'white', 'background-color': 'green'}),
-            html.H1(' '),
-            html.Div(id="query_data"),
-            html.H1(' '),
-            html.Div([
-                html.Div(id='label', style={'display': 'none'}),
-                dcc.RadioItems(id='radio_label'),
-                html.Button('Next', id='submit'),
-            ], ),
-            html.Div(id='n_times', style={'display': 'none'})
+
+
+        dcc.Tabs(id ='tab', value='training', children=[
+            dcc.Tab(id='Batch mode learning', label="training", children=[
+                html.Div(children=[
+                    html.Button('Fetch next batch', id='next_round', autoFocus=True,
+                                style={'color': 'white', 'background-color': 'green'}),
+                    html.H1(' '),
+                    html.Div(id="query_data"),
+                    html.H1(' '),
+                    html.Div([
+                        html.Div(id='label', style={'display': 'none'}),
+                        dcc.RadioItems(id='radio_label'),
+                        html.Button('Next', id='submit'),
+                    ], ),
+                    html.Div(id='n_times', style={'display': 'none'})
+                ]),
+                dcc.Graph(id='scatter', style={'width':'49%'}),
+                dcc.Graph(id='ground', style={'width':'49%'}),
+                dcc.Graph(id='scatter-hidden', style={'display': 'none'}),
+                dcc.Graph(id='decision'),
+
+            ]),
+
+            dcc.Tab(label="View batch metrics",id="testing", children=[
+                html.Div(id='score'),]),
+            dcc.Tab(label="View clusters",id="cluster", children=[
+                html.Div(id='cluster_plot'),
+
+            ]),
         ]),
-        dcc.Loading(dcc.Graph(id='scatter')),
-        dcc.Graph(id='scatter-hidden', style={'display': 'none'}),
-        html.Div(id='score'),
-        dcc.Loading(dcc.Graph(id='decision')),
-        dcc.Graph(id='ground'),
 
 
 
