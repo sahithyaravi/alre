@@ -2,50 +2,30 @@ from .all_imports import *
 from .select_batch_k_means import *
 import dash_table
 
+
 def register_callbacks(app):
-    @app.callback(Output('ground', 'figure'),
-                   [Input('start', 'n_clicks'),
-                    Input('submit', 'n_clicks'),
-                    Input('next_round','n_clicks')],
-                  [State('select-dataset','value'),
-                   State('dim', 'value')])
-    def plot_ground_truth(start, submit, next_round, dataset, dim):
-        print("plotting ground truth")
-        if next_round is None:
-            time.sleep(5)
-        x = np.load('.cache/x.npy')
-        y = np.load('.cache/y.npy')
-        principals = visualize(x, dim)
-        positive = (y == 1)
-        print(positive)
-        negative = (y == 0)
-        data = [go.Scattergl(x=principals[positive, 0],
-                          y=principals[positive, 1],
-                          name='1',
-                          mode='markers'),
-               go.Scattergl(x=principals[negative, 0],
-                          y=principals[negative, 1],
-                            name='0',
-                          mode='markers')
-               ]
-        return go.Figure(data, layout=go.Layout(title='Ground truth'))
 
     @app.callback([Output('scatter-hidden', 'figure'),
                    Output('label', 'children'),
                    Output('store', 'data'),
                    Output('radio_label', 'options'),
                    Output('n_times', 'value'),
+                   Output('cluster_plot', 'figure'),
+                   Output('ground', 'figure'),
                    ],
                   [Input('next_round', 'n_clicks'),
                    Input('start', 'n_clicks')],
                   [State('select-dataset', 'value'),
                   State('query-batch-size', 'value'),
                    State('dim', 'value'),
-                   State('store', 'data')])
-    def update_scatter_plot(n_clicks, start, dataset, batch_size, dim, storedata):
+                   State('store', 'data'),
+                   State('al', 'value')])
+    def update_scatter_plot(n_clicks, start, dataset, batch_size, dim, storedata, al):
         print("entered update_scatter_plot")
+        cluster = go.Figure()
 
         df, x, y = get_dataset(dataset)
+
         df.to_pickle('.cache/df_original.pkl')
         # Original data x and y
         np.save('.cache/x.npy', x)
@@ -69,33 +49,36 @@ def register_callbacks(app):
             selected = principals_train
             df_pca = pd.DataFrame(principals, columns=['1', '2'])
             data = [
-                go.Scattergl(x=principals_train[:,0],
-                             y=principals_train[:,1],
-                             mode='markers',
-                             marker=dict(color='lightblue'),
-                             name='training data'),
                 go.Scattergl(x=principals_test[:, 0],
                              y=principals_test[:, 1],
                              mode='markers',
-                             marker=dict(color='azure'),
+                             marker=dict(color='grey'),
                              name='test data'),
                 go.Scattergl(x=principals[:, 0],
                              y=principals[:, 1],
                              mode='markers',
+                             marker=dict(color='lightblue'),
+                             name='unlabelled data'),
+
+                go.Scattergl(x=principals_train[:,0],
+                             y=principals_train[:,1],
+                             mode='markers',
                              marker=dict(color='steelblue'),
-                             name='unlabelled data')
+                             name='training data'),
+
+
             ]
-
-
         else:
             visible = 'legendonly'
             x_pool = np.load('.cache/x_pool.npy')
             learner = pickle.load(open(filename, 'rb'))
-            query_indices, query_instance, uncertainity = learner.query(x_pool)
-
-
+            if al == 'k-means-closest':
+                query_indices, query_instance, uncertainity , cluster = learner.query(x_pool)
+                #cluster = go.Figure()
+            else:
+                query_indices, query_instance, uncertainity = learner.query(x_pool)
             x_train = np.load('.cache/x_train.npy')
-            x_test= np.load('.cache/x_test.npy')
+            x_test = np.load('.cache/x_test.npy')
             df = pd.read_pickle('.cache/df.pkl')
 
             principals = visualize(x_pool, dim)
@@ -105,32 +88,32 @@ def register_callbacks(app):
             selected = principals[query_indices]
 
             heatmap_indices = np.random.randint(low=0, high=x_pool.shape[0], size=100)
-            colorscale = [[0, 'mediumturquoise'], [1, 'lightsalmon']]
+            colorscale = [[0, 'mediumturquoise'], [1, 'salmon']]
             np.append(heatmap_indices, query_indices)
             np.save('.cache/selected.npy', selected)
             df.ix[query_indices].to_pickle('.cache/selected.pkl')
             df.drop(query_indices, inplace=True)
             df = df.reset_index(drop=True)
             data = [
-                go.Scattergl(x=principals_train[:, 0],
-                             y=principals_train[:, 1],
-                             mode='markers',
-                             marker=dict(color='lightblue'),
-                             name='training data'),
                 go.Scattergl(x=principals_test[:, 0],
                              y=principals_test[:, 1],
                              mode='markers',
-                             marker=dict(color='azure'),
+                             marker=dict(color='grey'),
                              name='test data'),
                 go.Scattergl(x=principals[:, 0],
                              y=principals[:, 1],
                              mode='markers',
-                             marker=dict(color='lightsteelblue'),
+                             marker=dict(color='lightblue'),
                              name='unlabelled data'),
+                go.Scattergl(x=principals_train[:, 0],
+                             y=principals_train[:, 1],
+                             mode='markers',
+                             marker=dict(color='steelblue'),
+                             name='training data'),
                 go.Scattergl(x=selected[:, 0],
                              y=selected[:, 1],
                              mode='markers',
-                             marker=dict(color='darkblue'),
+                             marker=dict(color='darkblue', size=12),
                              # size=10,
                              # line=dict(color='royalblue', width=10)),
                              name='selected queries'),
@@ -153,9 +136,22 @@ def register_callbacks(app):
         if n_clicks > 0:
             name = 'Batch'+str(n_clicks)
 
-
-
         fig = go.Figure(data)
+        principals_all = visualize(x, dim)
+        positive = (y == 1)
+
+        negative = (y == 0)
+        data_ground = [go.Scattergl(x=principals_all[positive, 0],
+                             y=principals_all[positive, 1],
+                             marker= dict(color='blue'),
+                             name='1',
+                             mode='markers'),
+                go.Scattergl(x=principals_all[negative, 0],
+                             y=principals_all[negative, 1],
+                             marker= dict(color='red'),
+                             name='0',
+                             mode='markers')
+                ]
 
         # Labels
         values = np.unique(y)
@@ -170,7 +166,8 @@ def register_callbacks(app):
         df.to_pickle('.cache/df.pkl')
         df_pca.to_pickle('.cache/df_pca.pkl')
 
-        return fig, dataset, start, options, n_clicks
+        return fig, dataset, start, options, n_clicks,\
+               cluster, go.Figure(data_ground, layout=go.Layout(title='Ground truth'))
 
     @app.callback(
         [Output('query_data', 'children'),
@@ -223,7 +220,9 @@ def register_callbacks(app):
                            y=[selected[0, 1]],
                            mode='markers',
                            name='current query',
-                           marker=dict(symbol='star', color='rgba(0, 0, 0,1)')))
+                           marker=dict(symbol='star',
+                                       size=12,
+                                       color='rgba(0, 0, 0,1)')))
             selected = np.delete(selected, 0, axis=0)
 
             selected_df.drop(0, inplace=True, axis=0)
@@ -275,8 +274,11 @@ def register_callbacks(app):
         return json.dumps(result_dict), start
 
     @app.callback(
-        [Output('decision', 'figure'),
+        [
+         Output('decision', 'figure'),
          Output('score', 'children'),
+         Output('decision1', 'figure'),
+         Output('done', 'children')
          ],
         [Input('hidden-div', 'children'),
          Input('next_round', 'n_clicks'),
@@ -289,10 +291,11 @@ def register_callbacks(app):
     def perform_active_learning(previous, n_clicks, batch_size, labels, dataset, query_round,
                                 start_timer):
         decision = go.Figure()
+        decision1 = go.Figure()
         score = ''
         show_fig = 0
         table = html.Div()
-
+        done = " "
 
         if n_clicks is None and labels == dataset:
             n_clicks = 0
@@ -310,13 +313,16 @@ def register_callbacks(app):
                     df_timer = pd.concat([timer_df, df_timer])
                     df_timer.to_pickle('.cache/df_timer.pkl')
 
-
                 if(literal_eval(previous)["clicks"]) == (batch_size*n_clicks):
                     df_timer.drop('time', axis=1, inplace=True)
                     table = dash_table.DataTable(
                         id='table',
                         columns=[{"name": i, "id": i} for i in df_timer.columns],
                         data=df_timer.to_dict('records'),
+                        style_header={
+                            'backgroundColor': 'rgb(230, 230, 230)',
+                            'fontWeight': 'bold'
+                        },
                           style_cell={
                               'textAlign': 'left',
                             'height': 'auto',
@@ -332,31 +338,39 @@ def register_callbacks(app):
 
                     x_pool = np.load('.cache/x_pool.npy')
                     y_pool = np.load('.cache/y_pool.npy')
+                    x_train = np.load('.cache/x_train.npy')
+
 
                     learner = pickle.load(open(filename, 'rb'))
                     query_results = literal_eval(previous)['queries'][0:batch_size]
                     query_indices = list(range(0, batch_size))
-                    learner.teach(x[query_indices], query_results)
+                    learner.teach(x_pool[query_indices], query_results)
                     # Active learner supports numpy matrices, hence use .values
-
-
+                    x_train = np.append(x_train, x_pool[query_indices])
                     x_pool = np.delete(x_pool, query_indices, axis=0)
                     y_pool = np.delete(y_pool, query_indices)
                     np.save('.cache/x_pool.npy', x_pool)
                     np.save('.cache/y_pool.npy', y_pool)
+                    np.save('.cache/x_train.npy', x_train)
         if show_fig == 1:
-
+            done = html.H5('Batch # ' + str(n_clicks) + " done, Click Batch Output tab")
             predictions = learner.predict(x)
-            is_correct = (predictions == y)
+
+            is_wrong = np.where(predictions != y)
+            ones = np.where(predictions == 1)[0]
+            zeros = np.where(predictions == 0)[0]
+
             df = pd.DataFrame(x)
             #df['y'] = predictions
             principals = visualize(df.as_matrix(), dim='pca')
+            df['y'] = predictions
+            pca = PCA(n_components=2)
+            principals_1 = pca.fit_transform(df.as_matrix())
             df_pca = pd.DataFrame(principals, columns=['1', '2'])
-
-
+            df_pca1 = pd.DataFrame(principals_1, columns=['1', '2'])
             f1_score = sklearn.metrics.f1_score(y, predictions)
             confusion_matrix = sklearn.metrics.confusion_matrix(y, predictions)
-            print(confusion_matrix)
+
             cm_data = [go.Heatmap(x=np.unique(y),
                                   y=np.unique(y),
                                   z=confusion_matrix)]
@@ -377,25 +391,53 @@ def register_callbacks(app):
                               cm_fig,
                               table
                               ])
+
             data_dec = [
 
-                go.Scattergl(x=df_pca['1'].values[predictions == 1],
-                             y=df_pca['2'].values[predictions == 1],
+                go.Scattergl(x=df_pca['1'].values[ones],
+                             y=df_pca['2'].values[ones],
                              mode='markers',
                              name='1',
                              marker=dict(size=12,
                                          color='blue')),
 
-                go.Scattergl(x=df_pca['1'].values[predictions == 0],
-                             y=df_pca['2'].values[predictions == 0],
+                go.Scattergl(x=df_pca['1'].values[zeros],
+                             y=df_pca['2'].values[zeros],
                              mode='markers',
                              name='0',
                              marker=dict(size=12,
                                          color='red',
                                          )),
 
-                go.Scattergl(x=df_pca['1'].values[~is_correct],
-                             y=df_pca['2'].values[~is_correct],
+                go.Scattergl(x=df_pca['1'].values[is_wrong],
+                             y=df_pca['2'].values[is_wrong],
+                             mode='markers',
+                             name='wrong predictions',
+                             marker=dict(symbol="x",
+                                         opacity=0.7,
+                                         size=8,
+                                         color='black'
+                                         )),
+            ]
+            data_dec1 = [
+
+                go.Scattergl(x=df_pca1['1'].values[ones],
+                             y=df_pca1['2'].values[ones],
+                             mode='markers',
+                             name='1',
+                             marker=dict(size=12,
+                                         color='blue')),
+
+                go.Scattergl(x=df_pca1['1'].values[zeros],
+                             y=df_pca1['2'].values[zeros],
+                             mode='markers',
+                             name='0',
+                             marker=dict(size=12,
+                                         color='red',
+                                         )),
+
+                go.Scattergl(x=df_pca1['1'].values[is_wrong],
+                             y=df_pca1['2'].values[is_wrong],
                              mode='markers',
                              name='wrong predictions',
                              marker=dict(symbol="x",
@@ -405,9 +447,9 @@ def register_callbacks(app):
                                          )),
             ]
             decision = go.Figure(data_dec, layout=go.Layout(title='Output of classfier'))
+            decision1 = go.Figure(data_dec1)
 
-        return decision, score
-
+        return decision, score, decision1, done
 
 
 def get_dataset(dataset):
@@ -443,6 +485,9 @@ def get_dataset(dataset):
     #     x = raw_data['data']
     #     y = raw_data['target'].astype(np.uint8)
     #print(df.head())
+    pca = PCA(n_components=2, random_state=100)
+    pca.fit(x)
+    pickle.dump(pca, open('.cache/pca.sav', 'wb'))
     return df, x, y
 
 
@@ -461,8 +506,8 @@ def numpy_to_b64(array, scalar=True):
 def visualize(x_pool, dim):
     print(x_pool.shape)
     if dim == "pca":
-        pca = PCA(n_components=2, random_state=100)
-        principals = pca.fit_transform(x_pool)
+        pca = pickle.load(open('.cache/pca.sav', 'rb'))
+        principals = pca.transform(x_pool)
     elif dim == "tsne":
         tsne = TSNE(n_components=2, random_state=100, n_jobs=4, metric='cosine')
         principals = tsne.fit_transform(x_pool)
@@ -507,4 +552,5 @@ def init_active_learner(x, y, batch_size):
 
     np.save('.cache/x_pool.npy', x_pool)
     np.save('.cache/y_pool.npy', y_pool)
+
     return query_indices, test_indices, x_pool

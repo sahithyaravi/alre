@@ -55,10 +55,10 @@ app.layout = html.Div(
                          children=[
                              html.Div(children=["Select batch size:"],
                                       style={'width': '40%'}),
-                             html.Div(dcc.Slider(id='query-batch-size', min=3, max=100, step=None,
+                             html.Div(dcc.Slider(id='query-batch-size', min=2, max=100, step=None,
                                                  marks={
-                                                     i: str(i) for i in [3, 5, 10, 50, 100]
-                                                 }, value=3), style={'width': '60%'})]),
+                                                     i: str(i) for i in [3, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+                                                 }, value=10), style={'width': '60%'})]),
                 html.Div(className='control-element',
                          children=[
                              html.Div(children=["Active learning method:"],
@@ -75,7 +75,7 @@ app.layout = html.Div(
                 html.Div(className='control-element',
                          children=[
                              html.Div(children=["Dimensionality reduction (viz):"],
-                                      style={'width': '40%'}),
+                                      style={'width': '40%', "display": "none"}),
                              html.Div(dcc.RadioItems(id='dim',
                                                      options=[{'label': 'PCA', 'value': 'pca'},
                                                               {'label': 'T-SNE', 'value': 'tsne'},
@@ -98,8 +98,10 @@ app.layout = html.Div(
 
 
 
-        dcc.Tabs(id ='tab', value='training', children=[
-            dcc.Tab(id='Batch mode learning', label="training", children=[
+        dcc.Tabs(id='tab', children=[
+            dcc.Tab( label="Train batch", children=[
+                html.Div([
+                html.Div(id="done"),
                 html.Div(children=[
                     html.Button('Fetch next batch', id='next_round', autoFocus=True,
                                 style={'color': 'white', 'background-color': 'green'}),
@@ -111,19 +113,25 @@ app.layout = html.Div(
                         dcc.RadioItems(id='radio_label'),
                         html.Button('Next', id='submit'),
                     ], ),
-                    html.Div(id='n_times', style={'display': 'none'})
+                    html.Div(id='n_times', style={'display': 'none'}),
+
                 ]),
-                dcc.Graph(id='scatter', style={'width':'49%'}),
-                dcc.Graph(id='ground', style={'width':'49%'}),
-                dcc.Graph(id='scatter-hidden', style={'display': 'none'}),
-                dcc.Graph(id='decision'),
+
+                html.Div([
+                    dcc.Graph(id='scatter', style={'width': '49%', 'display': 'inline-block'}),
+                    dcc.Graph(id='ground', style={'width': '49%', 'display': 'inline-block'})]),
+                dcc.Graph(id='scatter-hidden', style={'display': 'none'})])
+
 
             ]),
 
-            dcc.Tab(label="View batch metrics",id="testing", children=[
-                html.Div(id='score'),]),
-            dcc.Tab(label="View clusters",id="cluster", children=[
-                html.Div(id='cluster_plot'),
+            dcc.Tab(label="Batch output",  children=[
+                html.Div([
+                html.Div([dcc.Graph(id='decision', style={'width': '49%', 'display': 'inline-block'}),
+                          dcc.Graph(id='decision1', style={'width': '49%', 'display': 'inline-block'})]),
+                html.Div(id='score')])]),
+            dcc.Tab(label="View clusters", children=[
+                html.Div([dcc.Graph(id='cluster_plot', style={'height': '100%'})]),
 
             ]),
         ]),

@@ -45,7 +45,7 @@ def batch_kmeans(classfier, x_pool, n_instances, selection_strategy):
     for i in range(1, n_instances+1):
         query_idx.append(np.random.choice(range(n_samples)))
     cluster_fig = plot_cluster(x_pool, batch_indices, indices, entropy, kmeans.labels_)
-    return batch_indices, x_pool[batch_indices], entropy
+    return batch_indices, x_pool[batch_indices], entropy, cluster_fig
 
 
 def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
