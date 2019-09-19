@@ -48,7 +48,7 @@ app.layout = html.Div(
                                                                   ],
                                                          clearable=False,
                                                          searchable=False,
-                                                         value='gao_dataset'
+                                                         value='davidson_dataset'
                                                          ), style={'width': '60%'})
                                    ]),
                 html.Div(className='control-element',
@@ -57,8 +57,8 @@ app.layout = html.Div(
                                       style={'width': '40%'}),
                              html.Div(dcc.Slider(id='query-batch-size', min=2, max=100, step=None,
                                                  marks={
-                                                     i: str(i) for i in [3, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-                                                 }, value=10), style={'width': '60%'})]),
+                                                     i: str(i) for i in [2, 3, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+                                                 }, value=2), style={'width': '60%'})]),
                 html.Div(className='control-element',
                          children=[
                              html.Div(children=["Active learning method:"],

@@ -296,6 +296,7 @@ def register_callbacks(app):
         show_fig = 0
         table = html.Div()
         done = " "
+        df_timer = pd.DataFrame()
 
         if n_clicks is None and labels == dataset:
             n_clicks = 0
