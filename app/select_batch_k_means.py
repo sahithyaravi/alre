@@ -124,6 +124,6 @@ def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
 
     fig = go.Figure(data=cluster_data)
 
-    plotly.offline.plot(fig, filename="clustering.html")
+    #plotly.offline.plot(fig, filename="clustering.html")
     return fig
 
