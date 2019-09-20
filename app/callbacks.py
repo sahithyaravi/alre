@@ -347,7 +347,7 @@ def register_callbacks(app):
                     query_indices = list(range(0, batch_size))
                     learner.teach(x_pool[query_indices], query_results)
                     # Active learner supports numpy matrices, hence use .values
-                    x_train = np.append(x_train, x_pool[query_indices])
+                    x_train = np.concatenate((x_train, x_pool[query_indices]), axis=0)
                     x_pool = np.delete(x_pool, query_indices, axis=0)
                     y_pool = np.delete(y_pool, query_indices)
                     np.save('.cache/x_pool.npy', x_pool)
@@ -471,7 +471,7 @@ def get_dataset(dataset):
                                stop_words=stopwords.words('english'))
         x = tfid.fit_transform(x).toarray()
         df['target'] = df['label']
-        print(df['target'].value_counts())
+        print("target distribution", df['target'].value_counts())
         df.drop('text', axis=1)
 
     # else: Support only image and text for now
@@ -505,7 +505,7 @@ def numpy_to_b64(array, scalar=True):
 
 
 def visualize(x_pool, dim):
-    print(x_pool.shape)
+
     if dim == "pca":
         pca = pickle.load(open('.cache/pca.sav', 'rb'))
         principals = pca.transform(x_pool)
