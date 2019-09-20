@@ -54,10 +54,13 @@ def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
     color = ['hsl(' + str(h) + ',80%' + ',50%)' for h in np.linspace(0, 330, n_clusters)]
     cluster_data = []
     pca = PCA(n_components=2, random_state=100)
+    df = pd.read_pickle('.cache/df.pkl')
     principals_pool = pca.fit_transform(x_pool)
     principals = principals_pool[indices]
+    df_indices = df.ix[indices].reset_index()
     principals_rest = np.delete(principals_pool, indices, axis=0)
     heatmap_indices = np.random.randint(low=0, high=x_pool.shape[0], size=100)
+
 
     np.append(heatmap_indices, batch_indices)
 
@@ -73,8 +76,11 @@ def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
                                    ))
     for cluster_id in np.unique(labels_):
         cluster_indices = np.where(labels_ == cluster_id)
+
         center_index = batch_indices[cluster_id]
         cluster_principals = principals[cluster_indices]
+        df_cluster = df_indices.ix[cluster_indices]
+
         # print("cluster" , cluster_id, cluster_principals
         # )
 
@@ -82,12 +88,14 @@ def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
                                        y=cluster_principals[:, 1],
                                        mode='markers',
                                        showlegend=True,
+                                       hovertext=df_cluster['text'].values,
                                        marker=dict(color=color[cluster_id],
                                                    size=10),
                                        name='cluster ' + str(cluster_id),
                                        ))
         cluster_data.append(go.Scatter(x=[principals_pool[center_index, 0]],
                                        y=[principals_pool[center_index, 1]],
+                                       hovertext=[df.ix[center_index]['text']],
                                        mode='markers',
                                        showlegend=True,
                                        marker=dict(color=color[cluster_id],

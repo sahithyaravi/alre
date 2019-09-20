@@ -24,23 +24,24 @@ def register_callbacks(app):
     def update_scatter_plot(n_clicks, start, dataset, batch_size, dim, storedata, al, n_times):
         print("entered update_scatter_plot")
         cluster = go.Figure()
-
-        df, x, y = get_dataset(dataset)
-
-        df.to_pickle('.cache/df_original.pkl')
-        # Original data x and y
-        np.save('.cache/x.npy', x)
-        np.save('.cache/y.npy', y)
         if storedata is None:
             storedata = 0
         if start is None:
             start = 0
         if n_clicks is None or n_clicks == 0 or start > storedata:
             print("start over")
+            df, x, y = get_dataset(dataset)
+
+            df.to_pickle('.cache/df_original.pkl')
+            # Original data x and y
+            np.save('.cache/x.npy', x)
+            np.save('.cache/y.npy', y)
             n_times = 0
             visible = False
             n_clicks = 0
-            train_indices, test_indices, x_pool = init_active_learner(x, y, batch_size)
+            train_indices, test_indices, x_pool, indices = init_active_learner(x, y, batch_size)
+            df.drop(indices, inplace=True)
+            df = df.reset_index(drop=True)
             np.save('.cache/x_train.npy', x[train_indices])
             np.save('.cache/x_test.npy', x[test_indices])
             np.save('.cache/y_test.npy', y[test_indices])
@@ -141,6 +142,8 @@ def register_callbacks(app):
             name = 'Batch'+str(n_clicks)
 
         fig = go.Figure(data)
+        x = np.load('.cache/x.npy')
+        y = np.load('.cache/y.npy')
         principals_all = visualize(x, dim)
         positive = (y == 1)
 
@@ -567,10 +570,10 @@ def init_active_learner(x, y, batch_size):
                             y_training=y_train.ravel(),
                             query_strategy=preset_batch)
     pickle.dump(learner, open(filename, 'wb'))
-    x_pool = np.delete(x, query_indices, axis=0)
-    y_pool = np.delete(y, query_indices, axis=0)
+    x_pool = np.delete(x, indices, axis=0)
+    y_pool = np.delete(y, indices, axis=0)
 
     np.save('.cache/x_pool.npy', x_pool)
     np.save('.cache/y_pool.npy', y_pool)
 
-    return query_indices, test_indices, x_pool
+    return query_indices, test_indices, x_pool, indices
