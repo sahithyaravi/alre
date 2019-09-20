@@ -39,7 +39,7 @@ def register_callbacks(app):
             n_times = 0
             visible = False
             n_clicks = 0
-            train_indices, test_indices, x_pool, indices = init_active_learner(x, y, batch_size)
+            train_indices, test_indices, x_pool, indices = init_active_learner(x, y, batch_size, al)
             df.drop(indices, inplace=True)
             df = df.reset_index(drop=True)
             np.save('.cache/x_train.npy', x[train_indices])
@@ -77,7 +77,7 @@ def register_callbacks(app):
             n_times = n_times+1
             x_pool = np.load('.cache/x_pool.npy')
             learner = pickle.load(open(filename, 'rb'))
-            if al == 'k-means-closest':
+            if al == 'k-means-closest' or al == 'k-means-uncertain':
                 query_indices, query_instance, uncertainity , cluster = learner.query(x_pool)
                 #cluster = go.Figure()
             else:
@@ -543,7 +543,7 @@ def visualize(x_pool, dim):
     return principals
 
 
-def init_active_learner(x, y, batch_size):
+def init_active_learner(x, y, batch_size, al):
     # get 30% of data
     indices = np.random.randint(low=0, high=x.shape[0], size=round(0.3*x.shape[0]))
     query_indices = indices[0:round(0.1*x.shape[0])]
@@ -552,21 +552,18 @@ def init_active_learner(x, y, batch_size):
     x_train = x[query_indices]
     y_train = y[query_indices]
 
-    # ML model
-    # rf = RandomForestClassifier(n_jobs=-1, n_estimators=20,
-    #                             max_features=0.7,
-    #                             oob_score=True
-    #                            # class_weight={0: 1, 1: 2}
-    #                             )
-    #rf = KNeighborsClassifier(n_neighbors=5, n_jobs=4)
     svm = LinearSVC()
     estimator = CalibratedClassifierCV(svm)
 
-    #SVC(kernel='linear', probability=True, gamma='auto')
+
 
 
     # batch sampling
-    preset_batch = partial(batch_kmeans, n_instances=batch_size, selection_strategy='k-means-closest')
+    if al == 'k-means-closest' or al =='k-means-uncertain':
+        preset_batch = partial(batch_kmeans, n_instances=batch_size, selection_strategy=al)
+    else:
+        preset_batch = partial(uncertainty_batch_sampling, n_instances=batch_size)
+
     # AL model
     learner = ActiveLearner(estimator=estimator,
                             X_training=x_train,
