@@ -97,8 +97,7 @@ def register_callbacks(app):
             np.append(heatmap_indices, query_indices)
             np.save('.cache/selected.npy', selected)
             df.ix[query_indices].to_pickle('.cache/selected.pkl')
-            df.drop(query_indices, inplace=True)
-            df = df.reset_index(drop=True)
+
             data = [
                 go.Scattergl(x=principals_test[:, 0],
                              y=principals_test[:, 1],
@@ -107,6 +106,7 @@ def register_callbacks(app):
                              name='test data'),
                 go.Scattergl(x=principals[:, 0],
                              y=principals[:, 1],
+                             hovertext=df['text'].values,
                              mode='markers',
                              marker=dict(color='lightblue'),
                              name='unlabelled data'),
@@ -117,6 +117,7 @@ def register_callbacks(app):
                              name='training data'),
                 go.Scattergl(x=selected[:, 0],
                              y=selected[:, 1],
+                             hovertext=df.ix[query_indices]['text'].values,
                              mode='markers',
                              marker=dict(color='darkblue', size=12),
                              # size=10,
@@ -137,6 +138,8 @@ def register_callbacks(app):
                                          )
                            ),
             ]
+            df.drop(query_indices, inplace=True)
+            df = df.reset_index(drop=True)
 
         if n_clicks > 0:
             name = 'Batch'+str(n_clicks)
@@ -145,9 +148,9 @@ def register_callbacks(app):
         x = np.load('.cache/x.npy')
         y = np.load('.cache/y.npy')
         principals_all = visualize(x, dim)
-        positive = (y == 1)
+        positive = np.where(y == 1)[0]
 
-        negative = (y == 0)
+        negative = np.where(y == 0)[0]
         data_ground = [go.Scattergl(x=principals_all[positive, 0],
                              y=principals_all[positive, 1],
                              marker= dict(color='blue'),
