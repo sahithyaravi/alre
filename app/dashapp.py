@@ -117,9 +117,9 @@ app.layout = html.Div(
 
                 ]),
 
-                html.Div([
+                    dcc.Loading(html.Div([
                     dcc.Graph(id='scatter', style={'width': '49%', 'display': 'inline-block'}),
-                    dcc.Graph(id='ground', style={'width': '49%', 'display': 'inline-block'})]),
+                    dcc.Graph(id='ground', style={'width': '45%', 'display': 'inline-block'})])),
                 dcc.Graph(id='scatter-hidden', style={'display': 'none'})])
 
 

@@ -50,7 +50,7 @@ def batch_kmeans(classfier, x_pool, n_instances, selection_strategy):
 
 def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
     n_clusters = pd.Series(labels_).nunique()
-    colorscale = [[0, 'mediumturquoise'], [1, 'lightsalmon']]
+    colorscale = [[0, 'mediumturquoise'], [1, 'salmon']]
     color = ['hsl(' + str(h) + ',80%' + ',50%)' for h in np.linspace(0, 330, n_clusters)]
     cluster_data = []
     pca = PCA(n_components=2, random_state=100)

@@ -19,8 +19,9 @@ def register_callbacks(app):
                   State('query-batch-size', 'value'),
                    State('dim', 'value'),
                    State('store', 'data'),
-                   State('al', 'value')])
-    def update_scatter_plot(n_clicks, start, dataset, batch_size, dim, storedata, al):
+                   State('al', 'value'),
+                   State('n_times', 'value')])
+    def update_scatter_plot(n_clicks, start, dataset, batch_size, dim, storedata, al, n_times):
         print("entered update_scatter_plot")
         cluster = go.Figure()
 
@@ -35,6 +36,8 @@ def register_callbacks(app):
         if start is None:
             start = 0
         if n_clicks is None or n_clicks == 0 or start > storedata:
+            print("start over")
+            n_times = 0
             visible = False
             n_clicks = 0
             train_indices, test_indices, x_pool = init_active_learner(x, y, batch_size)
@@ -70,6 +73,7 @@ def register_callbacks(app):
             ]
         else:
             visible = 'legendonly'
+            n_times = n_times+1
             x_pool = np.load('.cache/x_pool.npy')
             learner = pickle.load(open(filename, 'rb'))
             if al == 'k-means-closest':
@@ -166,27 +170,33 @@ def register_callbacks(app):
         df.to_pickle('.cache/df.pkl')
         df_pca.to_pickle('.cache/df_pca.pkl')
 
-        return fig, dataset, start, options, n_clicks,\
+        return fig, dataset, start, options, n_times,\
                cluster, go.Figure(data_ground, layout=go.Layout(title='Ground truth'))
 
     @app.callback(
         [Output('query_data', 'children'),
          Output('scatter','figure'),
          Output('start_timer', 'value')],
-        [Input('n_times', 'value'),
+        [Input('start', 'n_clicks'),
+         Input('n_times', 'value'),
          Input('submit', 'n_clicks'),
          ],
         [State('select-dataset', 'value'),
-         State('scatter-hidden', 'figure')]
+         State('scatter-hidden', 'figure'),
+         State('store','data')]
         )
-    def enable_query(next_round, submit, dataset, fig):
+    def enable_query(start, next_round, submit, dataset, fig, store):
 
         print("entered enable_query")
+        if start is None:
+            start = 0
+        if store is None:
+            store = 0
         start_timer = dict()
         if fig is None:
             fig = go.Figure()
         image = " "
-        if next_round is None or next_round == 0:
+        if next_round is None or next_round == 0 or start > store:
             df_timer = pd.DataFrame()
             df_timer.to_pickle('.cache/df_timer.pkl')
             return image, fig, start_timer
@@ -264,7 +274,7 @@ def register_callbacks(app):
                     #points = previous_list['points'] + clickData['points']
                     queries = previous_list['queries']+[int(radio_label)]
                     #result_dict['points'] = points
-                    result_dict['clicks'] = submit
+                    result_dict['clicks'] = literal_eval(previous)["clicks"]+1
                     result_dict['queries'] = queries
                 else:
                     result_dict = json.loads(previous)
@@ -280,16 +290,19 @@ def register_callbacks(app):
          Output('decision1', 'figure'),
          Output('done', 'children')
          ],
-        [Input('hidden-div', 'children'),
-         Input('next_round', 'n_clicks'),
+        [Input('start', 'n_clicks'),
+          Input('hidden-div', 'children'),
+         Input('n_times', 'value'),
          Input('query-batch-size', 'value'),
          Input('label', 'children'),
          Input('select-dataset', 'value'),
 
+
          ], [State('querystore', 'data'),
-             State('start_timer', 'value')])
-    def perform_active_learning(previous, n_clicks, batch_size, labels, dataset, query_round,
-                                start_timer):
+             State('start_timer', 'value'),
+             State('store','data')])
+    def perform_active_learning(start, previous, n_clicks, batch_size, labels, dataset, query_round,
+                                start_timer, store):
         decision = go.Figure()
         decision1 = go.Figure()
         score = ''
@@ -297,8 +310,12 @@ def register_callbacks(app):
         table = html.Div()
         done = " "
         df_timer = pd.DataFrame()
+        if start is None:
+            start = 0
+        if store is None:
+            store = 0
 
-        if n_clicks is None and labels == dataset:
+        if n_clicks == 0 or start > store:
             n_clicks = 0
             show_fig = 1
             x = np.load('.cache/x.npy')
@@ -307,6 +324,7 @@ def register_callbacks(app):
 
         else:
             if previous and n_clicks is not None:
+                print(n_clicks, batch_size*n_clicks,literal_eval(previous)["clicks"])
                 if start_timer:
                     df_timer = pd.read_pickle('.cache/df_timer.pkl')
                     start_timer['time_to_label'] = time.time()- start_timer['time']
@@ -314,8 +332,9 @@ def register_callbacks(app):
                     df_timer = pd.concat([timer_df, df_timer])
                     df_timer.to_pickle('.cache/df_timer.pkl')
 
-                if(literal_eval(previous)["clicks"]) == (batch_size*n_clicks):
-                    df_timer.drop('time', axis=1, inplace=True)
+                if(literal_eval(previous)["clicks"]) == (batch_size*n_clicks) and n_clicks !=0:
+                    if 'time' in df_timer.columns:
+                        df_timer.drop('time', axis=1, inplace=True)
                     table = dash_table.DataTable(
                         id='table',
                         columns=[{"name": i, "id": i} for i in df_timer.columns],
@@ -363,10 +382,10 @@ def register_callbacks(app):
 
             df = pd.DataFrame(x)
             #df['y'] = predictions
-            principals = visualize(df.as_matrix(), dim='pca')
+            principals = visualize(df.values, dim='pca')
             df['y'] = predictions
             pca = PCA(n_components=2)
-            principals_1 = pca.fit_transform(df.as_matrix())
+            principals_1 = pca.fit_transform(df.values)
             df_pca = pd.DataFrame(principals, columns=['1', '2'])
             df_pca1 = pd.DataFrame(principals_1, columns=['1', '2'])
             f1_score = sklearn.metrics.f1_score(y, predictions)
