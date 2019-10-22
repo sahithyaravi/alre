@@ -1,6 +1,7 @@
 from .all_imports import *
 from .select_batch_k_means import *
 import dash_table
+BATCH_LABEL = 1
 
 
 def register_callbacks(app):
@@ -98,7 +99,6 @@ def register_callbacks(app):
             np.save('.cache/selected.npy', selected)
             df.ix[query_indices].to_pickle('.cache/selected.pkl')
             df.ix[query_indices].to_pickle(".cache/text.pkl")
-
 
             data = [
                 go.Scattergl(x=principals_test[:, 0],
@@ -218,39 +218,56 @@ def register_callbacks(app):
         except ValueError:
             pass
         if not selected_df.empty:
-            if dataset == "mnist":
-                selected_df = selected_df.reset_index(drop=True)
-                if 'target' in selected_df.columns:
-                    selected_df.drop('target', inplace=True, axis=1)
-                image_vector = selected_df.to_numpy()[index]
-                image_np = image_vector.reshape(8, 8).astype(np.float64)
-                #print(image_np)
-                image_b64 = numpy_to_b64(image_np)
-                image = html.Img(
-                    src="data:image/png;base64, " + image_b64,
-                    style={"display": "block", "height": "10vh", "margin": "auto"},
-                )
+            if not BATCH_LABEL:
+                if dataset == "mnist":
+                    selected_df = selected_df.reset_index(drop=True)
+                    if 'target' in selected_df.columns:
+                        selected_df.drop('target', inplace=True, axis=1)
+                    image_vector = selected_df.to_numpy()[index]
+                    image_np = image_vector.reshape(8, 8).astype(np.float64)
+                    #print(image_np)
+                    image_b64 = numpy_to_b64(image_np)
+                    image = html.Img(
+                        src="data:image/png;base64, " + image_b64,
+                        style={"display": "block", "height": "10vh", "margin": "auto"},
+                    )
+
+                else:
+                    index = 0
+                    selected_df = selected_df.reset_index(drop=True)
+                    image = html.Div(html.H6(selected_df.ix[index]['text']))
+                    start_timer['data'] = selected_df.ix[index]['text']
+
+                # fig['data'].append(go.Scattergl(x=[selected[0, 0]],
+                #                y=[selected[0, 1]],
+                #                mode='markers',
+                #                name='current query',
+                #                marker=dict(symbol='star',
+                #                            size=12,
+                #                            color='rgba(0, 0, 0,1)')))
+                selected = np.delete(selected, 0, axis=0)
+
+                selected_df.drop(0, inplace=True, axis=0)
+                selected_df.to_pickle('.cache/selected.pkl')
+                np.save('.cache/selected.npy', selected)
 
             else:
-                index = 0
-                selected_df = selected_df.reset_index(drop=True)
-                image = html.Div(html.H6(selected_df.ix[index]['text']))
-                start_timer['data'] = selected_df.ix[index]['text']
-
-            # fig['data'].append(go.Scattergl(x=[selected[0, 0]],
-            #                y=[selected[0, 1]],
-            #                mode='markers',
-            #                name='current query',
-            #                marker=dict(symbol='star',
-            #                            size=12,
-            #                            color='rgba(0, 0, 0,1)')))
-            selected = np.delete(selected, 0, axis=0)
-
-            selected_df.drop(0, inplace=True, axis=0)
-            selected_df.to_pickle('.cache/selected.pkl')
-            np.save('.cache/selected.npy', selected)
-
-            start_timer['time']= time.time()
+                image = dash_table.DataTable(
+                    id='table',
+                    columns=[{"name": i, "id": i} for i in selected_df.columns],
+                    data=selected_df.to_dict('records'),
+                    style_header={
+                        'backgroundColor': 'rgb(230, 230, 230)',
+                        'fontWeight': 'bold'
+                    },
+                    style_cell={
+                        'textAlign': 'left',
+                        'height': 'auto',
+                        'minWidth': '0px', 'maxWidth': '180px',
+                        'whiteSpace': 'normal'
+                    }
+                )
+        start_timer['time'] = time.time()
 
         return image, start_timer
 
