@@ -97,6 +97,8 @@ def register_callbacks(app):
             np.append(heatmap_indices, query_indices)
             np.save('.cache/selected.npy', selected)
             df.ix[query_indices].to_pickle('.cache/selected.pkl')
+            df.ix[query_indices].to_pickle(".cache/text.pkl")
+
 
             data = [
                 go.Scattergl(x=principals_test[:, 0],
@@ -181,34 +183,37 @@ def register_callbacks(app):
 
     @app.callback(
         [Output('query_data', 'children'),
-         Output('scatter','figure'),
+        # Output('scatter','figure'),
          Output('start_timer', 'value')],
         [Input('start', 'n_clicks'),
          Input('n_times', 'value'),
          Input('submit', 'n_clicks'),
          ],
         [State('select-dataset', 'value'),
-         State('scatter-hidden', 'figure'),
+
          State('store','data')]
+         # State('scatter-hidden', 'figure'),]
         )
-    def enable_query(start, next_round, submit, dataset, fig, store):
+    def enable_query(start, next_round, submit, dataset, store):
 
         print("entered enable_query")
+
         if start is None:
             start = 0
         if store is None:
             store = 0
         start_timer = dict()
-        if fig is None:
-            fig = go.Figure()
+
         image = " "
         if next_round is None or next_round == 0 or start > store:
             df_timer = pd.DataFrame()
+
             df_timer.to_pickle('.cache/df_timer.pkl')
-            return image, fig, start_timer
+            return image, start_timer
         try:
             index = 0
             selected_df = pd.read_pickle('.cache/selected.pkl')
+
             selected = np.load('.cache/selected.npy')
         except ValueError:
             pass
@@ -232,13 +237,13 @@ def register_callbacks(app):
                 image = html.Div(html.H6(selected_df.ix[index]['text']))
                 start_timer['data'] = selected_df.ix[index]['text']
 
-            fig['data'].append(go.Scattergl(x=[selected[0, 0]],
-                           y=[selected[0, 1]],
-                           mode='markers',
-                           name='current query',
-                           marker=dict(symbol='star',
-                                       size=12,
-                                       color='rgba(0, 0, 0,1)')))
+            # fig['data'].append(go.Scattergl(x=[selected[0, 0]],
+            #                y=[selected[0, 1]],
+            #                mode='markers',
+            #                name='current query',
+            #                marker=dict(symbol='star',
+            #                            size=12,
+            #                            color='rgba(0, 0, 0,1)')))
             selected = np.delete(selected, 0, axis=0)
 
             selected_df.drop(0, inplace=True, axis=0)
@@ -247,7 +252,7 @@ def register_callbacks(app):
 
             start_timer['time']= time.time()
 
-        return image, fig, start_timer
+        return image, start_timer
 
     @app.callback(
         [
@@ -316,6 +321,7 @@ def register_callbacks(app):
         table = html.Div()
         done = " "
         df_timer = pd.DataFrame()
+        out = pd.DataFrame()
         if start is None:
             start = 0
         if store is None:
@@ -339,24 +345,9 @@ def register_callbacks(app):
                     df_timer.to_pickle('.cache/df_timer.pkl')
 
                 if(literal_eval(previous)["clicks"]) == (batch_size*n_clicks) and n_clicks !=0:
-                    if 'time' in df_timer.columns:
-                        df_timer.drop('time', axis=1, inplace=True)
-                    table = dash_table.DataTable(
-                        id='table',
-                        columns=[{"name": i, "id": i} for i in df_timer.columns],
-                        data=df_timer.to_dict('records'),
-                        style_header={
-                            'backgroundColor': 'rgb(230, 230, 230)',
-                            'fontWeight': 'bold'
-                        },
-                          style_cell={
-                              'textAlign': 'left',
-                            'height': 'auto',
-                            'minWidth': '0px', 'maxWidth': '180px',
-                            'whiteSpace': 'normal'
-                        }
-                    )
-                    show_fig=1
+
+
+                    show_fig = 1
 
                     end = time.time()
                     x = np.load('.cache/x.npy')
@@ -365,10 +356,14 @@ def register_callbacks(app):
                     x_pool = np.load('.cache/x_pool.npy')
                     y_pool = np.load('.cache/y_pool.npy')
                     x_train = np.load('.cache/x_train.npy')
-
+                    out = pd.read_pickle('.cache/text.pkl')
 
                     learner = pickle.load(open(filename, 'rb'))
                     query_results = literal_eval(previous)['queries'][0:batch_size]
+                    out['user_label'] = query_results
+                    # if not df_timer.empty:
+                    #     out['time'] =df_timer['time_to_label'].values
+                    out.to_csv('Batch' + str(n_clicks)+'.csv')
                     query_indices = list(range(0, batch_size))
                     learner.teach(x_pool[query_indices], query_results)
                     # Active learner supports numpy matrices, hence use .values
@@ -396,6 +391,22 @@ def register_callbacks(app):
             df_pca1 = pd.DataFrame(principals_1, columns=['1', '2'])
             f1_score = sklearn.metrics.f1_score(y, predictions)
             confusion_matrix = sklearn.metrics.confusion_matrix(y, predictions)
+
+            table = dash_table.DataTable(
+                id='table',
+                columns=[{"name": i, "id": i} for i in out.columns],
+                data=out.to_dict('records'),
+                style_header={
+                    'backgroundColor': 'rgb(230, 230, 230)',
+                    'fontWeight': 'bold'
+                },
+                style_cell={
+                    'textAlign': 'left',
+                    'height': 'auto',
+                    'minWidth': '0px', 'maxWidth': '180px',
+                    'whiteSpace': 'normal'
+                }
+            )
 
             cm_data = [go.Heatmap(x=np.unique(y),
                                   y=np.unique(y),
@@ -472,6 +483,7 @@ def register_callbacks(app):
                                          color='black'
                                          )),
             ]
+
             decision = go.Figure(data_dec, layout=go.Layout(title='Output of classfier'))
             decision1 = go.Figure(data_dec1)
 
