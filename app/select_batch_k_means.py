@@ -106,20 +106,20 @@ def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
                                        name='centroid cluster ' + str(cluster_id)
 
                                        ))
-    cluster_data.append(go.Contour(x=principals_pool[heatmap_indices][:, 0],
-                                   y=principals_pool[heatmap_indices][:, 1],
-                                   z=entropy[heatmap_indices],
-                                   name='uncertainity map',
-                                   visible='legendonly',
-                                   showlegend=True,
-                                   connectgaps=True,
-                                   showscale=False,
-                                   colorscale=colorscale,
-                                   line=dict(width=0),
-                                   contours=dict(coloring="heatmap",
-                                                 showlines=False
-                                                 )
-                                   ))
+        cluster_data.append(go.Contour(x=principals_pool[heatmap_indices][:, 0],
+                                       y=principals_pool[heatmap_indices][:, 1],
+                                       z=entropy[heatmap_indices],
+                                       name='uncertainity map',
+                                       visible='legendonly',
+                                       showlegend=True,
+                                       connectgaps=True,
+                                       showscale=False,
+                                       colorscale=colorscale,
+                                       line=dict(width=0),
+                                       contours=dict(coloring="heatmap",
+                                                     showlines=False
+                                                     )
+                                       ))
     # cluster_data.append(go.Heatmap(x=principals_pool[heatmap_indices][:, 0],
     #                                y=principals_pool[heatmap_indices][:, 1],
     #                                z=entropy[heatmap_indices],
