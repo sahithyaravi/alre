@@ -96,7 +96,7 @@ def register_callbacks(app):
             colorscale = [[0, 'mediumturquoise'], [1, 'salmon']]
             np.append(heatmap_indices, query_indices)
             np.save('.cache/selected.npy', selected)
-            df.ix[query_indices].to_pickle('.cache/selected.pkl')
+            df.iloc[query_indices].to_pickle('.cache/selected.pkl')
 
             data = [
                 go.Scattergl(x=principals_test[:, 0],
@@ -117,7 +117,7 @@ def register_callbacks(app):
                              name='training data'),
                 go.Scattergl(x=selected[:, 0],
                              y=selected[:, 1],
-                             hovertext=df.ix[query_indices]['text'].values,
+                             hovertext=df.iloc[query_indices]['text'].values,
                              mode='markers',
                              marker=dict(color='darkblue', size=12),
                              # size=10,
@@ -229,8 +229,8 @@ def register_callbacks(app):
             else:
                 index = 0
                 selected_df = selected_df.reset_index(drop=True)
-                image = html.Div(html.H6(selected_df.ix[index]['text']))
-                start_timer['data'] = selected_df.ix[index]['text']
+                image = html.Div(html.H6(selected_df.iloc[index]['text']))
+                start_timer['data'] = selected_df.iloc[index]['text']
 
             fig['data'].append(go.Scattergl(x=[selected[0, 0]],
                            y=[selected[0, 1]],

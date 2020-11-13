@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.offline
 from sklearn.cluster import KMeans
+
 from modAL.uncertainty import classifier_entropy
 from scipy.spatial.distance import euclidean, cosine
 from sklearn.decomposition import PCA
@@ -58,7 +59,7 @@ def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
     df = pd.read_pickle('.cache/df.pkl')
     principals_pool = pca.fit_transform(x_pool)
     principals = principals_pool[indices]
-    df_indices = df.ix[indices].reset_index()
+    df_indices = df.iloc[indices].reset_index()
     principals_rest = np.delete(principals_pool, indices, axis=0)
     heatmap_indices = np.random.randint(low=0, high=x_pool.shape[0], size=100)
 
@@ -80,7 +81,7 @@ def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
 
         center_index = batch_indices[cluster_id]
         cluster_principals = principals[cluster_indices]
-        df_cluster = df_indices.ix[cluster_indices]
+        df_cluster = df_indices.iloc[cluster_indices]
 
         # print("cluster" , cluster_id, cluster_principals
         # )
@@ -96,7 +97,7 @@ def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
                                        ))
         cluster_data.append(go.Scatter(x=[principals_pool[center_index, 0]],
                                        y=[principals_pool[center_index, 1]],
-                                       hovertext=[df.ix[center_index]['text']],
+                                       hovertext=[df.iloc[center_index]['text']],
                                        mode='markers',
                                        showlegend=True,
                                        marker=dict(color=color[cluster_id],
@@ -132,6 +133,7 @@ def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
     #                                ))
 
     fig = go.Figure(data=cluster_data)
+    fig.write_html("clusters.html")
 
     #plotly.offline.plot(fig, filename="clustering.html")
     return fig
