@@ -179,6 +179,9 @@ def register_callbacks(app):
         return fig, dataset, start, options, n_times,\
                cluster, go.Figure(data_ground, layout=go.Layout(title='Ground truth'))
 
+
+
+
     @app.callback(
         [Output('query_data', 'children'),
          Output('scatter','figure'),
@@ -189,7 +192,7 @@ def register_callbacks(app):
          ],
         [State('select-dataset', 'value'),
          State('scatter-hidden', 'figure'),
-         State('store','data')]
+         State('store', 'data')]
         )
     def enable_query(start, next_round, submit, dataset, fig, store):
 
@@ -232,13 +235,13 @@ def register_callbacks(app):
                 image = html.Div(html.H6(selected_df.iloc[index]['text']))
                 start_timer['data'] = selected_df.iloc[index]['text']
 
-            fig['data'].append(go.Scattergl(x=[selected[0, 0]],
-                           y=[selected[0, 1]],
-                           mode='markers',
-                           name='current query',
-                           marker=dict(symbol='star',
-                                       size=12,
-                                       color='rgba(0, 0, 0,1)')))
+            # fig['data'].append(go.Scattergl(x=[selected[0, 0]],
+            #                y=[selected[0, 1]],
+            #                mode='markers',
+            #                name='current query',
+            #                marker=dict(symbol='star',
+            #                            size=12,
+            #                            color='rgba(0, 0, 0,1)')))
             selected = np.delete(selected, 0, axis=0)
 
             selected_df.drop(0, inplace=True, axis=0)

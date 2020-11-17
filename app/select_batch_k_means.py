@@ -95,17 +95,17 @@ def plot_cluster(x_pool, batch_indices, indices, entropy, labels_ ):
                                                    size=10),
                                        name='cluster ' + str(cluster_id),
                                        ))
-        cluster_data.append(go.Scatter(x=[principals_pool[center_index, 0]],
-                                       y=[principals_pool[center_index, 1]],
-                                       hovertext=[df.iloc[center_index]['text']],
-                                       mode='markers',
-                                       showlegend=True,
-                                       marker=dict(color=color[cluster_id],
-                                                   size=15,
-                                                   line=dict(color='black', width=5)),
-                                       name='centroid cluster ' + str(cluster_id)
+        # cluster_data.append(go.Scatter(x=[principals_pool[center_index, 0]],
+        #                                y=[principals_pool[center_index, 1]],
+        #                                hovertext=[df.iloc[center_index]['text']],
+        #                                mode='markers',
+        #                                showlegend=True,
+        #                                marker=dict(color=color[cluster_id],
+        #                                            size=15,
+        #                                            line=dict(color='black', width=5)),
+        #                                name='centroid cluster ' + str(cluster_id)
 
-                                       ))
+                                       # ))
         cluster_data.append(go.Contour(x=principals_pool[heatmap_indices][:, 0],
                                        y=principals_pool[heatmap_indices][:, 1],
                                        z=entropy[heatmap_indices],
